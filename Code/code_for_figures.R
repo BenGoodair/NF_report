@@ -6,6 +6,7 @@ pacman::p_load(devtools, dplyr, tidyverse, tidyr, stringr,  curl, plm, readxl, z
 
 fulldata <- read.csv("C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/adults_social_care_data/expenditure.csv")
 df <- read.csv("C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/adults_social_care_data/activity_keep_all.csv")
+la_df <- read.csv(curl("https://raw.githubusercontent.com/BenGoodair/childrens_social_care_data/main/Final_Data/outputs/dashboard_data.csv"))
 
 
 ####ASC Outsourcing Breakdown by services####
@@ -168,8 +169,8 @@ plotfun <- fulldata %>%
   dplyr::ungroup()%>%
   dplyr::filter(SupportSetting=="direct payments")
 
-dpplot <- ggplot(plotfun[plotfun$SupportSetting=="direct payments",], aes(x = year, y = percent_total, color = percent_total)) +
-  geom_point(size = 3) +
+dpplot <- ggplot(plotfun[plotfun$SupportSetting=="direct payments",], aes(x = year, y = percent_total)) +
+  geom_point(size = 2, color = "#B4CFEE", alpha = 0.3) +
   geom_smooth(method = "loess", se = FALSE) +
   labs(
     x = "Year",
@@ -190,8 +191,8 @@ plotfun <- fulldata %>%
                 year!=2009)%>%
   dplyr::filter(SupportSetting=="total over 65")
 
-dpplot <- ggplot(plotfun, aes(x = year, y = percent_sector, color = percent_sector)) +
-  geom_point(size = 3) +
+dpplot <- ggplot(plotfun, aes(x = year, y = percent_sector)) +
+  geom_point(size = 2, color = "#B4CFEE", alpha = 0.3) +
   geom_smooth(method = "loess", se = FALSE) +
   labs(
     x = "Year",
@@ -213,8 +214,8 @@ plot1 <- df %>% dplyr::filter(SupportSetting=="Residential",
   geom_smooth(method = "loess", se = FALSE, colour = "#2A6EBB") +
   labs(
     x = "Year",
-    y = "Residents in Public Care Homes (%)",
-    title = "Aged 65 and over",
+    y = "Residents in Outsourced Care Homes (%)",
+    title = "",
     color = ""
   )+
   theme_bw()+
@@ -239,11 +240,33 @@ plot1 <- df %>% dplyr::filter(SupportSetting=="Residential",
   theme(panel.spacing.x = unit(4, "mm"))
 
 
-ggsave(plot=plot1, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/adults_social_care_data/fig2.png", width=10, height=7, dpi=600)
+ggsave(plot=plot1, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/NF_report/Figures/residential_adults.jpeg", width=10, height=7, dpi=600)
 
 
 
 
+####children's total outsourced residential placement####
+
+
+plotfun <- la_df %>%
+  dplyr::filter(variable=="Private provision"|variable=="Voluntary/third sector provision")%>%
+  dplyr::select(year,percent,LA_Name)%>%
+  dplyr::group_by(LA_Name, year)%>%
+  dplyr::summarise(percent = sum(as.numeric(percent), na.rm=T))%>%
+  dplyr::ungroup()
+
+dpplot <- ggplot(plotfun, aes(x = year, y = percent)) +
+  geom_point(size = 2, color = "#B4CFEE", alpha = 0.3) +
+  geom_smooth(method = "loess", se = FALSE) +
+  labs(
+    x = "Year",
+    y = "Outsourced Placements (%)",
+    title = "",
+    color = "Outsourced spend %"
+  )+
+  theme_bw()
+
+ggsave(plot=dpplot, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/NF_report/Figures/children_outsourced_residential_placements.jpeg", width=8, height=6, dpi=600)
 
 
 
