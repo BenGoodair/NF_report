@@ -7,7 +7,8 @@ pacman::p_load(devtools, dplyr, tidyverse, tidyr, stringr,  curl, plm, readxl, z
 fulldata <- read.csv("C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/adults_social_care_data/expenditure.csv")
 df <- read.csv("C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/adults_social_care_data/activity_keep_all.csv")
 la_df <- read.csv(curl("https://raw.githubusercontent.com/BenGoodair/childrens_social_care_data/main/Final_Data/outputs/dashboard_data.csv"))
-
+ProviderData = read.csv(curl("https://raw.githubusercontent.com/BenGoodair/childrens_social_care_data/main/Final_Data/outputs/Provider_data.csv"))
+carehomes <- read.csv("C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/Children's Care Homes Project/Data/Ben report dates.csv")
 
 ####ASC Outsourcing Breakdown by services####
 
@@ -24,19 +25,27 @@ plotfun <-fulldata %>%
                                                                    ifelse(SupportSetting=="u65 mental health", "Mental Health Support",SupportSetting)))))))
 
 
+yes <- plotfun %>% dplyr::filter(Sector=="Total")%>%
+  dplyr::select(-Service, -X, -Sector,-percent_sector)%>%
+  dplyr::group_by(DH_GEOGRAPHY_NAME, year, SupportSetting)%>%
+  dplyr::summarise(Expenditure_tot_setting = sum(Expenditure, na.rm = T))%>%
+  dplyr::ungroup()
+
 plot1 <- plotfun %>% dplyr::filter(Sector=="Total")%>%
   dplyr::select(-Service, -X, -Sector,-percent_sector, -SupportSetting)%>%
   dplyr::group_by(DH_GEOGRAPHY_NAME, year)%>%
   dplyr::summarise(Expenditure_tot_reshom = sum(Expenditure, na.rm = T))%>%
   dplyr::ungroup()%>%
   dplyr::left_join(., plotfun, by = c("year", "DH_GEOGRAPHY_NAME"))%>%
-  dplyr::filter(Sector=="External")%>%
+  dplyr::left_join(., yes, by = c("year", "DH_GEOGRAPHY_NAME", "SupportSetting"), relationship = "many-to-many")%>%
+  dplyr::filter(Sector=="In House")%>%
+  dplyr::mutate(outsourced = Expenditure_tot_setting-Expenditure)%>%
   dplyr::select(-DH_GEOGRAPHY_NAME, -Service,-Sector, -X,-percent_sector)%>%
   dplyr::group_by(year, SupportSetting)%>%
   dplyr::summarise(Expenditure_tot_reshom = sum(Expenditure_tot_reshom, na.rm = T),
-                   Expenditure = sum(Expenditure, na.rm = T))%>%
+                   outsourced = sum(outsourced, na.rm = T))%>%
   dplyr::ungroup()%>%
-  dplyr::mutate(percent_sector = Expenditure/Expenditure_tot_reshom*100)%>%
+  dplyr::mutate(percent_sector = outsourced/Expenditure_tot_reshom*100)%>%
   dplyr::filter(year!=2009)%>%
   ggplot(., aes(x=year, y=percent_sector, fill=SupportSetting))+
   geom_area(
@@ -88,6 +97,11 @@ plotfun <-fulldata %>%
 
 
 
+yes <- plotfun %>% dplyr::filter(Sector=="Total")%>%
+  dplyr::select(-Service, -X, -Sector,-percent_sector)%>%
+  dplyr::group_by(DH_GEOGRAPHY_NAME, year, SupportSetting)%>%
+  dplyr::summarise(Expenditure_tot_setting = sum(Expenditure, na.rm = T))%>%
+  dplyr::ungroup()
 
 plot2 <- plotfun %>% dplyr::filter(Sector=="Total")%>%
   dplyr::select(-Service, -X, -Sector,-percent_sector, -SupportSetting)%>%
@@ -95,13 +109,15 @@ plot2 <- plotfun %>% dplyr::filter(Sector=="Total")%>%
   dplyr::summarise(Expenditure_tot_reshom = sum(Expenditure, na.rm = T))%>%
   dplyr::ungroup()%>%
   dplyr::left_join(., plotfun, by = c("year", "DH_GEOGRAPHY_NAME"))%>%
-  dplyr::filter(Sector=="External")%>%
+  dplyr::left_join(., yes, by = c("year", "DH_GEOGRAPHY_NAME", "SupportSetting"), relationship = "many-to-many")%>%
+  dplyr::filter(Sector=="In House")%>%
+  dplyr::mutate(outsourced = Expenditure_tot_setting-Expenditure)%>%
   dplyr::select(-DH_GEOGRAPHY_NAME, -Service,-Sector, -X,-percent_sector)%>%
   dplyr::group_by(year, SupportSetting)%>%
   dplyr::summarise(Expenditure_tot_reshom = sum(Expenditure_tot_reshom, na.rm = T),
-                   Expenditure = sum(Expenditure, na.rm = T))%>%
+                   outsourced = sum(outsourced, na.rm = T))%>%
   dplyr::ungroup()%>%
-  dplyr::mutate(percent_sector = Expenditure/Expenditure_tot_reshom*100)%>%
+  dplyr::mutate(percent_sector = outsourced/Expenditure_tot_reshom*100)%>%
   dplyr::filter(year!=2009)%>%
   ggplot(., aes(x=year, y=percent_sector, fill=SupportSetting))+
   geom_area(
@@ -245,7 +261,7 @@ ggsave(plot=plot1, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Docum
 
 
 
-####children's total outsourced residential placement####
+####children's outsourced residential placement####
 
 
 plotfun <- la_df %>%
@@ -269,5 +285,360 @@ dpplot <- ggplot(plotfun, aes(x = year, y = percent)) +
 ggsave(plot=dpplot, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/NF_report/Figures/children_outsourced_residential_placements.jpeg", width=8, height=6, dpi=600)
 
 
+####children's outsourced residential placement FP break####
+
+
+plotfun <- la_df %>%
+  dplyr::filter(variable=="Private provision"|variable=="Voluntary/third sector provision")%>%
+  dplyr::select(year,percent,variable)%>%
+  dplyr::group_by(variable, year)%>%
+  dplyr::summarise(percent = mean(as.numeric(percent), na.rm=T))%>%
+  dplyr::ungroup()
+
+dpplot <- ggplot(plotfun, aes(x = year, y = percent, fill=variable)) +
+  geom_area(
+    #stat = "smooth", method = "loess"
+  )+
+  labs(
+    x = "Year",
+    y = "Outsourced Placements (%)",
+    title = "",
+    color = "Sector")+
+  theme_bw()+
+  #facet_wrap(~SupportSetting,nrow = 1)+
+  theme(text = element_text(size=20),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        axis.ticks.length=unit(.28, "cm"),
+        axis.line.x = element_line(size = 0.5, linetype = "solid", colour = "black"),
+        axis.line.y = element_line(size = 0.5, linetype = "solid", colour = "black"),
+        axis.line = element_line(colour = "black"),
+        axis.title = element_text(size=24),
+        axis.text.x = element_text(size=18),
+        axis.text.y = element_text(size=20),
+        legend.title = element_blank(),
+        legend.box.background = element_rect(colour = "black", size = 1),
+        legend.text = element_text(size=20),
+        legend.position = "top",
+        strip.background = element_rect(fill="gray90", colour="black", size=1),
+        strip.text = element_text(face="bold", size=16),
+        title=element_text(face="bold")) +
+  scale_fill_manual(values=c("#2A6EBB","#B4CFEE", "#1F5189" ))
+
+ggsave(plot=dpplot, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/NF_report/Figures/children_outsourced_residential_placements_fpnp.jpeg", width=8, height=6, dpi=600)
+
+
+#### child spend####
+
+plotfun <- la_df %>%
+  dplyr::filter(category=="Expenditure"&
+                  (subcategory=="For_profit"|subcategory=="Third_sector"),
+                variable=="Total Children Looked After")%>%
+  dplyr::select(year,percent,LA_Name)%>%
+  dplyr::group_by(LA_Name, year)%>%
+  dplyr::summarise(percent = sum(as.numeric(percent), na.rm=T))%>%
+  dplyr::ungroup()
+
+dpplot <- ggplot(plotfun, aes(x = year, y = percent)) +
+  geom_point(size = 2, color = "#B4CFEE", alpha = 0.3) +
+  geom_smooth(method = "loess", se = FALSE) +
+  labs(
+    x = "Year",
+    y = "Outsourced Expenditure (%)",
+    title = "",
+    color = "Outsourced spend %"
+  )+
+  theme_bw()
+
+ggsave(plot=dpplot, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/NF_report/Figures/children_outsourced_total_spend.jpeg", width=8, height=6, dpi=600)
+
+
+####child spend break fp####
+plotfun <- la_df %>%
+  dplyr::filter(category=="Expenditure"&
+                  (subcategory=="For_profit"|subcategory=="Third_sector"),
+                variable=="Total Children Looked After")%>%
+  dplyr::select(year,percent,subcategory)%>%
+  dplyr::group_by(subcategory, year)%>%
+  dplyr::summarise(percent = mean(as.numeric(percent), na.rm=T))%>%
+  dplyr::ungroup()
+
+dpplot <- ggplot(plotfun, aes(x=year, y=percent, fill=subcategory))+
+  geom_area(
+    #stat = "smooth", method = "loess"
+  )+
+  labs(
+    x = "Year",
+    y = "Outsourced Expenditure (%)",
+    title = "",
+    color = "Sector")+
+  theme_bw()+
+  #facet_wrap(~SupportSetting,nrow = 1)+
+  theme(text = element_text(size=20),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        axis.ticks.length=unit(.28, "cm"),
+        axis.line.x = element_line(size = 0.5, linetype = "solid", colour = "black"),
+        axis.line.y = element_line(size = 0.5, linetype = "solid", colour = "black"),
+        axis.line = element_line(colour = "black"),
+        axis.title = element_text(size=24),
+        axis.text.x = element_text(size=18),
+        axis.text.y = element_text(size=20),
+        legend.title = element_blank(),
+        legend.box.background = element_rect(colour = "black", size = 1),
+        legend.text = element_text(size=20),
+        legend.position = "top",
+        strip.background = element_rect(fill="gray90", colour="black", size=1),
+        strip.text = element_text(face="bold", size=16),
+        title=element_text(face="bold")) +
+  scale_fill_manual(values=c("#2A6EBB","#B4CFEE", "#1F5189" ))
+
+
+ggsave(plot=dpplot, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/NF_report/Figures/children_outsourced_total_spend_FPNP.jpeg", width=8, height=6, dpi=600)
+
+####child spend break service####
+
+
+plotfun <- la_df %>%
+  dplyr::filter(category=="Expenditure"&
+                  (subcategory=="For_profit"|subcategory=="Third_sector"),
+                variable=="Residential care"|
+                  variable=="Total fostering services"|
+                  variable=="Adoption services"|
+                  variable=="Leaving care support services"|
+                  variable=="Other children looked after services")%>%
+  dplyr::select(year,percent,LA_Name, variable)%>%
+  dplyr::group_by(LA_Name, year, variable)%>%
+  dplyr::summarise(percent = sum(as.numeric(percent), na.rm=T))%>%
+  dplyr::ungroup()
+
+dpplot <- ggplot(plotfun, aes(x = year, y = percent)) +
+  geom_point(size = 2, color = "#B4CFEE", alpha = 0.3) +
+  geom_smooth(method = "loess", se = FALSE) +
+  labs(
+    x = "Year",
+    y = "Outsourced Expenditure (%)",
+    title = "",
+    color = "Outsourced spend %"
+  )+
+  theme_bw()+
+  facet_wrap(~variable)
+
+ggsave(plot=dpplot, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/NF_report/Figures/children_outsourced_total_spend_services.jpeg", width=8, height=6, dpi=600)
+
+####children's homes#####
+
+ProviderData$date <- as.Date(ProviderData$Registration.date, format =  "%d/%m/%Y")
+ProviderData$month <- format(ProviderData$date,"%m/%y")
+ProviderData$time <- as.integer(time_length(difftime( as.Date(ProviderData$date), as.Date("2022-12-01")), "months"))
+Providernobs <- unique(ProviderData[c("time", "Sector", "URN")][which(ProviderData$Provision.type=="Children's home"),])
+nobsByIdih <- Providernobs %>% dplyr::group_by(time, Sector) %>% dplyr::summarize(nobs = n())
+nobsprive <- nobsByIdih[which(nobsByIdih$Sector=="Private"),]
+nobsvol <- nobsByIdih[which(nobsByIdih$Sector=="Voluntary"),]
+nobsla <- nobsByIdih[which(nobsByIdih$Sector=="Local Authority"),]
+
+all <- unique(nobsprive[c("Sector")])
+all<-all[rep(seq_len(nrow(all)), each = 227), ]  # Base R
+all$time <- seq(from =-226, to=0)
+all$er <- 1
+nobsprive <- merge(nobsprive, all,by=c("Sector", "time"), all=T)
+nobsprive[is.na(nobsprive$nobs),]$nobs <- 0
+nobsprive$cumulative <- cumsum(nobsprive$nobs)
+
+all <- unique(nobsla[c("Sector")])
+all<-all[rep(seq_len(nrow(all)), each = 227), ]  # Base R
+all$time <- seq(from =-226, to=0)
+all$er <- 1
+nobsla <- merge(nobsla, all,by=c("Sector", "time"), all=T)
+nobsla[is.na(nobsla$nobs),]$nobs <- 0
+nobsla$cumulative <- cumsum(nobsla$nobs)
+
+all <- unique(nobsvol[c("Sector")])
+all<-all[rep(seq_len(nrow(all)), each = 227), ]  # Base R
+all$time <- seq(from =-226, to=0)
+all$er <- 1
+nobsvol <- merge(nobsvol, all,by=c("Sector", "time"), all=T)
+nobsvol[is.na(nobsvol$nobs),]$nobs <- 0
+nobsvol$cumulative <- cumsum(nobsvol$nobs)
+
+
+
+nobs <- rbind(nobsla, nobsvol,nobsprive)
+
+#nobs$Sector <-  revalue(as.character(nobs$Sector), c("Private"="Private", "Local Authority"="Local Authority", "Voluntary"="Third Sector"))
+
+nobs$Sector <- factor(nobs$Sector, levels = c("Private", "Local Authority", "Voluntary"))
+levels(nobs$Sector) <- c("For-profit", "Local Authority", "Voluntary")
+
+
+
+d <- ggplot(nobs[which(nobs$time>-226),], aes(x=time, y=cumulative, group=Sector,fill=Sector,  colour = Sector))+
+  geom_point()+
+  #geom_smooth(method="loess", span = 0.3)+
+  theme_minimal()+
+  scale_color_manual(values=c("#CD202C","#2A6EBB","#F0AB00" ))+
+# theme(legend.position="left")+
+  labs(x="Year", y="Number of Children's homes", title = "Number of active children's homes", fill="Ownership", color="Ownership")+
+  scale_x_continuous(breaks=c(-10,-34,-58,-82,-106,-130,-154,-178, -202, -226),
+                     labels=c("2022","2020","2018",  "2016", "2014", "2012","2010", "2008", "2006", "2004"))
+
+ggsave(plot=d, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/NF_report/Figures/childrens_homes.jpeg", width=8, height=6, dpi=600)
+
+
+
+#### number of care homes #### 
+
+carehomesstart <- carehomes %>%dplyr::select(location_start,ownership, unique_identifier )
+
+carehomesstart$date <- as.Date(carehomesstart$location_start, format =  "%d%b%Y")
+carehomesstart$month <- format(carehomesstart$date,"%m/%y")
+carehomesstart$time <- as.integer(time_length(difftime( as.Date(carehomesstart$date), as.Date("2023-12-01")), "months"))
+Providernobs <- unique(carehomesstart[c("time", "ownership", "unique_identifier")])
+nobsByIdih <- Providernobs %>% dplyr::group_by(time, ownership) %>% dplyr::summarize(nobs = n())
+nobsprive <- nobsByIdih[which(nobsByIdih$ownership=="For-profit"),]
+nobsvol <- nobsByIdih[which(nobsByIdih$ownership=="Third Sector"),]
+nobsla <- nobsByIdih[which(nobsByIdih$ownership=="Local Authority"),]
+
+all <- unique(nobsprive[c("ownership")])
+all<-all[rep(seq_len(nrow(all)), each = 239), ]  # Base R
+all$time <- seq(from =-238, to=0)
+all$er <- 1
+nobsprive <- merge(nobsprive, all,by=c("ownership", "time"), all=T)
+nobsprive[is.na(nobsprive$nobs),]$nobs <- 0
+nobsprive$cumulative <- cumsum(nobsprive$nobs)
+
+all <- unique(nobsla[c("ownership")])
+all<-all[rep(seq_len(nrow(all)), each = 239), ]  # Base R
+all$time <- seq(from =-238, to=0)
+all$er <- 1
+nobsla <- merge(nobsla, all,by=c("ownership", "time"), all=T)
+nobsla[is.na(nobsla$nobs),]$nobs <- 0
+nobsla$cumulative <- cumsum(nobsla$nobs)
+
+all <- unique(nobsvol[c("ownership")])
+all<-all[rep(seq_len(nrow(all)), each = 239), ]  # Base R
+all$time <- seq(from =-238, to=0)
+all$er <- 1
+nobsvol <- merge(nobsvol, all,by=c("ownership", "time"), all=T)
+nobsvol[is.na(nobsvol$nobs),]$nobs <- 0
+nobsvol$cumulative <- cumsum(nobsvol$nobs)
+
+
+
+nobs <- rbind(nobsla, nobsvol,nobsprive)
+
+
+carehomesend <- carehomes %>%dplyr::select(location_end,ownership, unique_identifier )%>%
+  filter(location_end!="")
+
+carehomesend$date <- as.Date(carehomesend$location_end, format =  "%d%b%Y")
+carehomesend$month <- format(carehomesend$date,"%m/%y")
+carehomesend$time <- as.integer(time_length(difftime( as.Date(carehomesend$date), as.Date("2023-12-01")), "months"))
+Providernobs <- unique(carehomesend[c("time", "ownership", "unique_identifier")])
+nobsByIdih <- Providernobs %>% dplyr::group_by(time, ownership) %>% dplyr::summarize(nobs = n())
+nobsprive <- nobsByIdih[which(nobsByIdih$ownership=="For-profit"),]
+nobsvol <- nobsByIdih[which(nobsByIdih$ownership=="Third Sector"),]
+nobsla <- nobsByIdih[which(nobsByIdih$ownership=="Local Authority"),]
+
+all <- unique(nobsprive[c("ownership")])
+all<-all[rep(seq_len(nrow(all)), each = 239), ]  # Base R
+all$time <- seq(from =-238, to=0)
+all$er <- 1
+nobsprive <- merge(nobsprive, all,by=c("ownership", "time"), all=T)
+nobsprive[is.na(nobsprive$nobs),]$nobs <- 0
+nobsprive$cumulative <- cumsum(nobsprive$nobs)
+
+all <- unique(nobsla[c("ownership")])
+all<-all[rep(seq_len(nrow(all)), each = 239), ]  # Base R
+all$time <- seq(from =-238, to=0)
+all$er <- 1
+nobsla <- merge(nobsla, all,by=c("ownership", "time"), all=T)
+nobsla[is.na(nobsla$nobs),]$nobs <- 0
+nobsla$cumulative <- cumsum(nobsla$nobs)
+
+all <- unique(nobsvol[c("ownership")])
+all<-all[rep(seq_len(nrow(all)), each = 239), ]  # Base R
+all$time <- seq(from =-238, to=0)
+all$er <- 1
+nobsvol <- merge(nobsvol, all,by=c("ownership", "time"), all=T)
+nobsvol[is.na(nobsvol$nobs),]$nobs <- 0
+nobsvol$cumulative <- cumsum(nobsvol$nobs)
+
+
+
+nobsend <- rbind(nobsla, nobsvol,nobsprive)
+nobsend$cumulative_end <- nobsend$cumulative
+
+nobser <- merge(nobs, nobsend[c("ownership", "time", "cumulative_end")], by= c("ownership", "time"), all=T)
+nobser$runningsum <- nobser$cumulative-nobser$cumulative_end
+
+
+
+d <- ggplot(nobser[which(nobser$time>-155),], aes(x=time, y=runningsum, group=ownership,fill=ownership,  colour = ownership))+
+  geom_point()+
+  #geom_smooth(method="loess", span = 0.3)+
+  theme_minimal()+
+  scale_color_manual(values=c("#CD202C","#2A6EBB","#F0AB00" ))+
+  # theme(legend.position="left")+
+  labs(x="Year", y="Number of Care homes", title = "Number of Active Care homes", fill="Ownership", color="Ownership")+
+  scale_x_continuous(breaks=c(-10,-22,-34,-46,-58,-70,-82,-94,-106,-118,-130,-142,-154),
+                     labels=c("2023","2022","2021","2020","2019","2018",  "2017", "2016", "2015","2014", "2013", "2012", "2011"))
+
+ggsave(plot=d, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/NF_report/Figures/care_homes.jpeg", width=8, height=6, dpi=600)
+
+
+####children's rolling quality####
+
+fig2 <- ProviderData%>%
+  dplyr::filter(Event.type=="Full inspection")%>%
+  dplyr::select(date, Overall.experiences.and.progress.of.children.and.young.people, Sector)%>%
+  dplyr::mutate(inspectiondate = as.Date(date, format =  "%Y-%m-%d"))%>%
+  dplyr::mutate(good = ifelse(Overall.experiences.and.progress.of.children.and.young.people=="Good", 1,
+                              ifelse(Overall.experiences.and.progress.of.children.and.young.people=="Outstanding",1,
+                                     ifelse(Overall.experiences.and.progress.of.children.and.young.people=="Requires improvement to be good", 0,
+                                            ifelse(Overall.experiences.and.progress.of.children.and.young.people=="Inadequate", 0,NA)))))%>%
+  dplyr::filter(!is.na(good),
+                !Sector=="")%>%
+  dplyr::arrange(inspectiondate) %>%
+  dplyr::mutate(all=1)%>%
+  dplyr::arrange(inspectiondate) %>%
+  dplyr::group_by(Sector, inspectiondate) %>%
+  dplyr::summarise(
+    good = sum(good),
+    all = sum(all)) %>%
+  dplyr::ungroup() %>%
+  complete(Sector, inspectiondate = seq.Date(min(.$inspectiondate), max(.$inspectiondate), by = "day")) %>%
+  dplyr::group_by(Sector) %>%
+  dplyr::arrange(inspectiondate) %>%
+  dplyr::mutate(rolling_good = zoo::rollapplyr(good, width = 365, FUN = sum, fill = NA, align = "right", na.rm=T)) %>%
+  dplyr::mutate(rolling_all = zoo::rollapplyr(all, width = 365, FUN = sum, fill = NA, align = "right", na.rm=T)) %>%
+  dplyr::mutate(rolling_good_ratio = rolling_good / rolling_all*100)%>%
+  ggplot(., aes(x=inspectiondate, y=rolling_good_ratio, colour=Sector))+
+  geom_line(size=2)+
+  labs(x="Year", y="Inspected Good or Outstanding (%)", color="Ownership")+
+  theme_bw()+
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y")+
+  theme(text = element_text(size=20),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        axis.ticks.length=unit(.28, "cm"),
+        axis.line.x = element_line(size = 0.5, linetype = "solid", colour = "black"),
+        axis.line.y = element_line(size = 0.5, linetype = "solid", colour = "black"),
+        axis.line = element_line(colour = "black"),
+        axis.title = element_text(size=24),
+        axis.text.x = element_text(size=18),
+        axis.text.y = element_text(size=20),
+        legend.title = element_blank(),
+        legend.box.background = element_rect(colour = "black", size = 1),
+        legend.text = element_text(size=20),
+        legend.position = "top",
+        strip.background = element_rect(fill="gray90", colour="black", size=1),
+        strip.text = element_text(face="bold", size=16),
+        title=element_text(face="bold")) +
+  theme(panel.spacing.x = unit(4, "mm"))+
+  scale_color_manual(values=c("#CD202C","#2A6EBB","#F0AB00" ))+
+  coord_cartesian(ylim=c(40, 100))
+
+ggsave(plot=fig2, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/NF_report/Figures/children_homes_ratings.jpeg", width=15, height=8, dpi=600)
 
 
