@@ -7,6 +7,7 @@ pacman::p_load(devtools, dplyr, tidyverse, tidyr, stringr,  curl, plm, readxl, z
 fulldata <- read.csv("C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/adults_social_care_data/expenditure.csv")
 df <- read.csv("C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/adults_social_care_data/activity_keep_all.csv")
 la_df <- read.csv(curl("https://raw.githubusercontent.com/BenGoodair/childrens_social_care_data/main/Final_Data/outputs/dashboard_data.csv"))
+exits <- read.csv(curl("https://raw.githubusercontent.com/BenGoodair/childrens_social_care_data/main/Final_Data/outputs/enter_exit.csv"))
 ProviderData = read.csv(curl("https://raw.githubusercontent.com/BenGoodair/childrens_social_care_data/main/Final_Data/outputs/Provider_data.csv"))
 carehomes <- read.csv("C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/Children's Care Homes Project/Data/Ben report dates.csv")
 
@@ -295,6 +296,8 @@ plotfun <- la_df %>%
   dplyr::summarise(percent = sum(as.numeric(percent), na.rm=T))%>%
   dplyr::ungroup()
 
+mean(plotfun[plotfun$year==2011,]$percent, na.rm=T)
+
 dpplot <- ggplot(plotfun, aes(x = year, y = percent)) +
   geom_point(size = 2, color = "#B4CFEE", alpha = 0.3) +
   geom_smooth(method = "loess", se = FALSE) +
@@ -322,7 +325,8 @@ dpplot <- ggplot(plotfun, aes(x = year, y = percent)) +
         strip.background = element_rect(fill="gray90", colour="black", size=1),
         strip.text = element_text(face="bold", size=16),
         title=element_text(face="bold")) +
-  scale_fill_manual(values=c("#2A6EBB","#B4CFEE", "#1F5189" ))
+  scale_fill_manual(values=c("#2A6EBB","#B4CFEE", "#1F5189" ))+
+  scale_x_continuous(breaks=c(2011,2014, 2017, 2020,2023))
 
 #gsave(plot=dpplot, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/NF_report/Figures/children_outsourced_residential_placements.jpeg", width=8, height=6, dpi=600)
 
@@ -336,6 +340,9 @@ plotfun <- la_df %>%
   dplyr::group_by(variable, year)%>%
   dplyr::summarise(percent = mean(as.numeric(percent), na.rm=T))%>%
   dplyr::ungroup()
+
+mean(plotfun[plotfun$year==2023&plotfun$variable=="Voluntary/third sector provision",]$percent, na.rm=T)
+
 
 dpplot2 <- ggplot(plotfun, aes(x = year, y = percent, fill=variable)) +
   geom_area(
@@ -365,7 +372,9 @@ dpplot2 <- ggplot(plotfun, aes(x = year, y = percent, fill=variable)) +
         strip.background = element_rect(fill="gray90", colour="black", size=1),
         strip.text = element_text(face="bold", size=16),
         title=element_text(face="bold")) +
-  scale_fill_manual(values=c("#2A6EBB","#B4CFEE", "#1F5189" ))
+  scale_fill_manual(values=c("#2A6EBB","#B4CFEE", "#1F5189" ))+
+  scale_x_continuous(breaks=c(2011,2014, 2017, 2020,2023))
+
 
 jaa <- cowplot::plot_grid(dpplot, dpplot2, ncol=2, labels = c("A","B"))
 
@@ -382,6 +391,9 @@ plotfun <- la_df %>%
   dplyr::group_by(LA_Name, year)%>%
   dplyr::summarise(percent = sum(as.numeric(percent), na.rm=T))%>%
   dplyr::ungroup()
+
+median(plotfun[plotfun$year==2011,]$percent, na.rm=T)
+median(plotfun[plotfun$year==2022,]$percent, na.rm=T)
 
   dpplot <- ggplot(plotfun, aes(x = year, y = percent)) +
   geom_point(size = 2, color = "#B4CFEE", alpha = 0.3) +
@@ -474,6 +486,8 @@ plotfun <- la_df %>%
   dplyr::group_by(LA_Name, year, variable)%>%
   dplyr::summarise(percent = sum(as.numeric(percent), na.rm=T))%>%
   dplyr::ungroup()
+
+median(plotfun[plotfun$year==2022&plotfun$variable=="Residential care",]$percent, na.rm=T)
 
 dpplot <- ggplot(plotfun, aes(x = year, y = percent)) +
   geom_point(size = 2, color = "#B4CFEE", alpha = 0.3) +
@@ -1170,9 +1184,148 @@ fig2 <- ProviderData%>%
         strip.text = element_text(face="bold", size=16),
         title=element_text(face="bold")) +
   theme(panel.spacing.x = unit(4, "mm"))+
-  scale_color_manual(values=c("#CD202C","#2A6EBB","#F0AB00" ))+
+  scale_color_manual(values=c("#2A6EBB","#CD202C","#F0AB00" ))+
   coord_cartesian(ylim=c(40, 100))
 
 ggsave(plot=fig2, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/NF_report/Figures/children_homes_ratings.jpeg", width=15, height=8, dpi=600)
 
+
+####children's rolling monitoring####
+
+fig2 <- ProviderData%>%
+  #dplyr::filter(Event.type=="Full inspection")%>%
+  dplyr::select(date, Overall.experiences.and.progress.of.children.and.young.people, Sector,Event.type)%>%
+  dplyr::mutate(inspectiondate = as.Date(date, format =  "%Y-%m-%d"),
+                Event.type = ifelse(Event.type=="SC Monitoring Inspection","Monitoring inspection", Event.type))%>%
+  dplyr::mutate(monitoring = ifelse(Event.type=="Monitoring inspection", 1, 0 ))%>%
+  dplyr::filter(!is.na(Event.type),
+                !Sector=="")%>%
+  dplyr::arrange(inspectiondate) %>%
+  dplyr::mutate(all=1)%>%
+  dplyr::arrange(inspectiondate) %>%
+  dplyr::group_by(Sector, inspectiondate) %>%
+  dplyr::summarise(
+    monitoring = sum(monitoring),
+    all = sum(all)) %>%
+  dplyr::ungroup() %>%
+  complete(Sector, inspectiondate = seq.Date(min(.$inspectiondate), max(.$inspectiondate), by = "day")) %>%
+  dplyr::group_by(Sector) %>%
+  dplyr::arrange(inspectiondate) %>%
+  dplyr::mutate(rolling_monitoring = zoo::rollapplyr(monitoring, width = 365, FUN = sum, fill = NA, align = "right", na.rm=T)) %>%
+  dplyr::mutate(rolling_all = zoo::rollapplyr(all, width = 365, FUN = sum, fill = NA, align = "right", na.rm=T)) %>%
+  dplyr::mutate(rolling_monitoring_ratio = rolling_monitoring / rolling_all*100)%>%
+  ggplot(., aes(x=inspectiondate, y=rolling_monitoring_ratio, colour=Sector))+
+  geom_line(size=2)+
+  labs(x="Year", y="Monitoring visits (%)", color="Ownership")+
+  theme_bw()+
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y")+
+  theme(text = element_text(size=20),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        axis.ticks.length=unit(.28, "cm"),
+        axis.line.x = element_line(size = 0.5, linetype = "solid", colour = "black"),
+        axis.line.y = element_line(size = 0.5, linetype = "solid", colour = "black"),
+        axis.line = element_line(colour = "black"),
+        axis.title = element_text(size=24),
+        axis.text.x = element_text(size=18),
+        axis.text.y = element_text(size=20),
+        legend.title = element_blank(),
+        legend.box.background = element_rect(colour = "black", size = 1),
+        legend.text = element_text(size=20),
+        legend.position = "top",
+        strip.background = element_rect(fill="gray90", colour="black", size=1),
+        strip.text = element_text(face="bold", size=16),
+        title=element_text(face="bold")) +
+  theme(panel.spacing.x = unit(4, "mm"))+
+  scale_color_manual(values=c("#2A6EBB","#CD202C","#F0AB00" ))+
+  coord_cartesian(ylim=c(0, 20))
+
+ggsave(plot=fig2, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/NF_report/Figures/children_homes_monitoring.jpeg", width=15, height=8, dpi=600)
+
+
+####children placement quality####
+
+
+placements_df = la_df[
+  (la_df['subcategory'] == 'Distance between home and placement and locality of placement') |
+    (la_df['subcategory'] == 'Reason for placement change during the year') |
+    (la_df['subcategory'] == 'Place providers') |
+    (la_df['subcategory'] == 'Locality of placement') |
+    (la_df['subcategory'] == 'LA of placement') |
+    (la_df['subcategory'] == 'Distance between home and placement') |
+    (la_df['subcategory'] == 'Mid-year moves') |
+    (la_df['subcategory'] == 'placement stability') #|
+  #(la_df['subcategory'] == 'Placed inside the local authority boundary') 
+]
+
+
+plotfun <- la_df %>%
+  dplyr::filter(subcategory=="Distance between home and placement and locality of placement"|
+                  subcategory=="Place providers"|
+                  subcategory=="Reason for placement change during the year"|
+                  subcategory=="Locality of placement"|
+                  subcategory=="LA of placement"|
+                  subcategory=="Mid-year moves"|
+                  subcategory=="placement stability")%>%
+  dplyr::select(year,percent,LA_Name, variable)%>%
+  dplyr::group_by(LA_Name, year, variable)%>%
+  dplyr::summarise(percent = sum(as.numeric(percent), na.rm=T))%>%
+  dplyr::ungroup()
+
+median(plotfun[plotfun$year==2022&plotfun$variable=="Residential care",]$percent, na.rm=T)
+
+dpplot <- ggplot(plotfun, aes(x = year, y = percent)) +
+  geom_point(size = 2, color = "#B4CFEE", alpha = 0.3) +
+  geom_smooth(method = "loess", se = FALSE) +
+  labs(
+    x = "Year",
+    y = "Percent (%)",
+    title = "",
+    color = ""
+  )+
+  theme_bw()+
+  facet_wrap(~variable)
+
+ggsave(plot=dpplot, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/NF_report/Figures/children_place_qual.jpeg", width=8, height=6, dpi=600)
+
+ProviderData %>%
+  dplyr::filter(year==2022)%>%
+  dplyr::distinct(URN, .keep_all = T)%>%
+  dplyr::group_by(Sector)%>%
+  count()
+
+####children's homes by deprivation####
+
+leaves <- exits %>%
+  dplyr::select(leave_join, imd_decile, Sector,IMD.2019...Extent, Places)%>%
+  dplyr::filter(leave_join=="Leave")%>%
+  dplyr::mutate(yes = 1)%>%
+  dplyr::group_by(imd_decile,IMD.2019...Extent, Sector )%>%
+  dplyr::summarise(homes = sum(yes),
+                   places = sum(Places, na.rm=T))%>%
+  dplyr::ungroup()
+  
+
+joins <- exits %>%
+  dplyr::select(leave_join, imd_decile, Sector,IMD.2019...Extent, Places)%>%
+  dplyr::filter(leave_join=="Join")%>%
+  dplyr::mutate(yes = 1)%>%
+  dplyr::group_by(imd_decile,IMD.2019...Extent, Sector )%>%
+  dplyr::summarise(homes_j = sum(yes),
+                   places_j = sum(Places, na.rm=T))%>%
+  dplyr::ungroup()
+
+plot <- dplyr::left_join(leaves, joins, by=c("IMD.2019...Extent", "Sector"))%>%
+  dplyr::mutate(net = homes_j-homes,
+                Sector = ifelse(Sector=="Private", "For-profit",
+                                ifelse(Sector=="Voluntary", "Third Sector", "Local Authority")))%>%
+  ggplot(. ,aes(x=as.numeric(IMD.2019...Extent)*100, y=net))+
+  geom_smooth(method = "lm")+
+  geom_point(color = "black", alpha = 0.5)+
+  facet_wrap(~Sector)+
+  geom_hline(yintercept = 0, linetype="dashed")+
+  theme_bw()+
+  labs(x="Population in deprivation (%)", y="Net change to children's homes number\n(2016-2023)")
+
+ggsave(plot=plot, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/NF_report/Figures/children_place_dep.jpeg", width=8, height=6, dpi=600)
 
