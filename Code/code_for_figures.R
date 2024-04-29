@@ -1304,6 +1304,14 @@ leaves <- exits %>%
   dplyr::summarise(homes = sum(yes),
                    places = sum(Places, na.rm=T))%>%
   dplyr::ungroup()
+
+leaves <- leaves %>%
+  dplyr::full_join(., tidyr:: expand_grid(leaves %>% 
+                                            dplyr::select(IMD.2019...Extent)%>%
+                                            dplyr::distinct(), 
+                                          c("Local Authority", "Private", "Voluntary"))%>%
+                     dplyr::rename(Sector = `c("Local Authority", "Private", "Voluntary")`),
+                   by=c("IMD.2019...Extent", "Sector"))
   
 
 joins <- exits %>%
@@ -1315,8 +1323,20 @@ joins <- exits %>%
                    places_j = sum(Places, na.rm=T))%>%
   dplyr::ungroup()
 
-plot <- dplyr::left_join(leaves, joins, by=c("IMD.2019...Extent", "Sector"))%>%
-  dplyr::mutate(net = homes_j-homes,
+joins <- joins %>%
+  dplyr::full_join(., tidyr:: expand_grid(joins %>% 
+                                            dplyr::select(IMD.2019...Extent)%>%
+                                            dplyr::distinct(), 
+                                          c("Local Authority", "Private", "Voluntary"))%>%
+                     dplyr::rename(Sector = `c("Local Authority", "Private", "Voluntary")`),
+                   by=c("IMD.2019...Extent", "Sector"))
+
+plot <- dplyr::full_join(leaves, joins, by=c("IMD.2019...Extent", "Sector"))%>%
+  dplyr::mutate(homes_j = ifelse(is.na(homes_j), 0, homes_j),
+                places_j = ifelse(is.na(places_j), 0, homes_j),
+                homes = ifelse(is.na(homes), 0, homes),
+                places = ifelse(is.na(places), 0, places),
+                net = homes_j-homes,
                 Sector = ifelse(Sector=="Private", "For-profit",
                                 ifelse(Sector=="Voluntary", "Third Sector", "Local Authority")))%>%
   ggplot(. ,aes(x=as.numeric(IMD.2019...Extent)*100, y=net))+
@@ -1328,4 +1348,62 @@ plot <- dplyr::left_join(leaves, joins, by=c("IMD.2019...Extent", "Sector"))%>%
   labs(x="Population in deprivation (%)", y="Net change to children's homes number\n(2016-2023)")
 
 ggsave(plot=plot, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/NF_report/Figures/children_place_dep.jpeg", width=8, height=6, dpi=600)
+
+
+####children's by houseprice####
+
+
+leaves <- exits %>%
+  dplyr::select(Average_house_price, Places,leave_join, Sector)%>%
+  dplyr::filter(leave_join=="Leave")%>%
+  dplyr::mutate(yes = 1)%>%
+  dplyr::group_by(Average_house_price, Sector )%>%
+  dplyr::summarise(homes = sum(yes),
+                   places = sum(as.numeric(Places), na.rm=T))%>%
+  dplyr::ungroup()
+
+leaves <- leaves %>%
+  dplyr::full_join(., tidyr:: expand_grid(leaves %>% 
+                                            dplyr::select(Average_house_price)%>%
+                                            dplyr::distinct(), 
+                                          c("Local Authority", "Private", "Voluntary"))%>%
+                     dplyr::rename(Sector = `c("Local Authority", "Private", "Voluntary")`),
+                   by=c("Average_house_price", "Sector"))
+
+
+joins <- exits %>%
+  dplyr::select(Average_house_price, Places,leave_join, Sector)%>%
+  dplyr::filter(leave_join=="Join")%>%
+  dplyr::mutate(yes = 1)%>%
+  dplyr::group_by(Average_house_price, Sector )%>%
+  dplyr::summarise(homes_j = sum(yes),
+                   places_j = sum(as.numeric(Places), na.rm=T))%>%
+  dplyr::ungroup()
+
+joins <- joins %>%
+  dplyr::full_join(., tidyr:: expand_grid(joins %>% 
+                                            dplyr::select(Average_house_price)%>%
+                                            dplyr::distinct(), 
+                                          c("Local Authority", "Private", "Voluntary"))%>%
+                     dplyr::rename(Sector = `c("Local Authority", "Private", "Voluntary")`),
+                   by=c("Average_house_price", "Sector"))
+
+plot <- dplyr::full_join(leaves, joins, by=c("Average_house_price", "Sector"))%>%
+  dplyr::mutate(homes_j = ifelse(is.na(homes_j), 0, homes_j),
+                 places_j = ifelse(is.na(places_j), 0, homes_j),
+                 homes = ifelse(is.na(homes), 0, homes),
+                 places = ifelse(is.na(places), 0, places),
+                 net = homes_j-homes,
+                Sector = ifelse(Sector=="Private", "For-profit",
+                                ifelse(Sector=="Voluntary", "Third Sector", "Local Authority")))%>%
+  #dplyr::filter(Average_house_price<1000000)%>%
+  ggplot(. ,aes(x=as.numeric(Average_house_price), y=net))+
+  geom_smooth(method = "lm")+
+  geom_point(color = "black", alpha = 0.5)+
+  facet_wrap(~Sector)+
+  geom_hline(yintercept = 0, linetype="dashed")+
+  theme_bw()+
+  labs(x="Average House Price (£))", y="Net change to children's homes number\n(2016-2023)")
+
+ggsave(plot=plot, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/NF_report/Figures/children_homes_houseprice.jpeg", width=8, height=6, dpi=600)
 
