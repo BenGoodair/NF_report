@@ -1396,7 +1396,7 @@ plot <- dplyr::full_join(leaves, joins, by=c("Average_house_price", "Sector"))%>
                  net = homes_j-homes,
                 Sector = ifelse(Sector=="Private", "For-profit",
                                 ifelse(Sector=="Voluntary", "Third Sector", "Local Authority")))%>%
-  #dplyr::filter(Average_house_price<1000000)%>%
+  dplyr::filter(Average_house_price<1000000)%>%
   ggplot(. ,aes(x=as.numeric(Average_house_price), y=net))+
   geom_smooth(method = "lm")+
   geom_point(color = "black", alpha = 0.5)+
