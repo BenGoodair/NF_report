@@ -499,9 +499,9 @@ dpplot <- ggplot(plotfun, aes(x = year, y = percent)) +
     color = "Outsourced spend %"
   )+
   theme_bw()+
-  facet_wrap(~variable)
+  facet_wrap(~variable, ncol=1)
 
-ggsave(plot=dpplot, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/NF_report/Figures/children_outsourced_total_spend_services.jpeg", width=8, height=6, dpi=600)
+ggsave(plot=dpplot, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/NF_report/Figures/children_outsourced_total_spend_services.jpeg", width=8, height=10, dpi=600)
 
 ####children's homes#####
 
@@ -560,6 +560,17 @@ d <- ggplot(nobs[which(nobs$time>-226),], aes(x=time, y=cumulative, group=Sector
                      labels=c("2022","2020","2018",  "2016", "2014", "2012","2010", "2008", "2006", "2004"))
 
 
+  frontcover <- ggplot(nobs[which(nobs$time>-226),], aes(x=time, y=cumulative, group=Sector,fill=Sector,  colour = Sector))+
+  #geom_point(size=2)+
+  geom_smooth(method="loess", span = 0.3, size=2)+
+  theme_void()+
+  scale_color_manual(values=c("#CD202C","#2A6EBB","#F0AB00" ))+
+  theme(legend.position="none")+
+  labs(x="Year", y="Number of Children's homes", title = "", fill="Ownership", color="Ownership")+
+  scale_x_continuous(breaks=c(-10,-34,-58,-82,-106,-130,-154,-178, -202, -226),
+                     labels=c("2022","2020","2018",  "2016", "2014", "2012","2010", "2008", "2006", "2004"))
+  ggsave(plot=frontcover, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/NF_report/Figures/children_homes_cover.jpeg", width=8, height=8, dpi=600)
+  
 
 
 ProviderData$date <- as.Date(ProviderData$Registration.date, format =  "%d/%m/%Y")
@@ -1132,7 +1143,7 @@ e2 <- ggplot(nobser[nobser$year>2010,], aes(x=year, y=runningsum, group=ownershi
 
 yep <- cowplot::plot_grid(d,d2,e,e2, ncol=2, labels = c("A", "B", "C", "D"))
 
-ggsave(plot=yep, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/NF_report/Figures/care_homes.jpeg", width=16, height=20, dpi=600)
+ggsave(plot=yep, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/NF_report/Figures/care_homes.jpeg", width=16, height=10, dpi=600)
 
 
 ####children's rolling quality####
@@ -1345,7 +1356,8 @@ plot <- dplyr::full_join(leaves, joins, by=c("IMD.2019...Extent", "Sector"))%>%
   facet_wrap(~Sector)+
   geom_hline(yintercept = 0, linetype="dashed")+
   theme_bw()+
-  labs(x="Population in deprivation (%)", y="Net change to children's homes number\n(2016-2023)")
+  labs(x="Population in deprivation (%)", y="Net change to children's homes number\n(2016-2023)")+
+  coord_cartesian(ylim=c(-20,40))
 
 ggsave(plot=plot, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/NF_report/Figures/children_place_dep.jpeg", width=8, height=6, dpi=600)
 
@@ -1388,7 +1400,7 @@ joins <- joins %>%
                      dplyr::rename(Sector = `c("Local Authority", "Private", "Voluntary")`),
                    by=c("Average_house_price", "Sector"))
 
-plot <- dplyr::full_join(leaves, joins, by=c("Average_house_price", "Sector"))%>%
+plot2 <- dplyr::full_join(leaves, joins, by=c("Average_house_price", "Sector"))%>%
   dplyr::mutate(homes_j = ifelse(is.na(homes_j), 0, homes_j),
                  places_j = ifelse(is.na(places_j), 0, homes_j),
                  homes = ifelse(is.na(homes), 0, homes),
@@ -1403,7 +1415,73 @@ plot <- dplyr::full_join(leaves, joins, by=c("Average_house_price", "Sector"))%>
   facet_wrap(~Sector)+
   geom_hline(yintercept = 0, linetype="dashed")+
   theme_bw()+
-  labs(x="Average House Price (£))", y="Net change to children's homes number\n(2016-2023)")
+  labs(x="Average House Price (£))", y="Net change to children's homes number\n(2016-2023)")+
+  coord_cartesian(ylim=c(-20, 40))
 
 ggsave(plot=plot, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/NF_report/Figures/children_homes_houseprice.jpeg", width=8, height=6, dpi=600)
+
+####children's homes by out-of-area placements####
+
+leaves <- exits %>%
+  dplyr::select(Local.authority, Places,leave_join, Sector)%>%
+  dplyr::filter(leave_join=="Leave")%>%
+  dplyr::mutate(yes = 1)%>%
+  dplyr::group_by(Local.authority, Sector )%>%
+  dplyr::summarise(homes = sum(yes),
+                   places = sum(as.numeric(Places), na.rm=T))%>%
+  dplyr::ungroup()
+
+leaves <- leaves %>%
+  dplyr::full_join(., tidyr:: expand_grid(leaves %>% 
+                                            dplyr::select(Local.authority)%>%
+                                            dplyr::distinct(), 
+                                          c("Local Authority", "Private", "Voluntary"))%>%
+                     dplyr::rename(Sector = `c("Local Authority", "Private", "Voluntary")`),
+                   by=c("Local.authority", "Sector"))
+
+
+joins <- exits %>%
+  dplyr::select(Local.authority, Places,leave_join, Sector)%>%
+  dplyr::filter(leave_join=="Join")%>%
+  dplyr::mutate(yes = 1)%>%
+  dplyr::group_by(Local.authority, Sector )%>%
+  dplyr::summarise(homes_j = sum(yes),
+                   places_j = sum(as.numeric(Places), na.rm=T))%>%
+  dplyr::ungroup()
+
+joins <- joins %>%
+  dplyr::full_join(., tidyr:: expand_grid(joins %>% 
+                                            dplyr::select(Local.authority)%>%
+                                            dplyr::distinct(), 
+                                          c("Local Authority", "Private", "Voluntary"))%>%
+                     dplyr::rename(Sector = `c("Local Authority", "Private", "Voluntary")`),
+                   by=c("Local.authority", "Sector"))
+
+plot <- dplyr::full_join(leaves, joins, by=c("Local.authority", "Sector"))%>%
+  dplyr::mutate(homes_j = ifelse(is.na(homes_j), 0, homes_j),
+                places_j = ifelse(is.na(places_j), 0, homes_j),
+                homes = ifelse(is.na(homes), 0, homes),
+                places = ifelse(is.na(places), 0, places),
+                net = homes_j-homes,
+                Sector = ifelse(Sector=="Private", "For-profit",
+                                ifelse(Sector=="Voluntary", "Third Sector", "Local Authority")))%>%
+  dplyr::full_join(., la_df %>% 
+                     dplyr::filter(variable=="2. Other LA children externally placed within the local authority boundary",
+                                   year>2017)%>%
+                     dplyr::select(LA_Name,percent)%>%
+                     dplyr::group_by(LA_Name)%>%
+                     summarise(percent= mean(as.numeric(percent), na.rm=T))%>%
+                     dplyr::ungroup()%>%
+                     dplyr::rename(Local.authority = LA_Name), by="Local.authority")%>%
+  dplyr::filter(!is.na(Sector))%>%
+  ggplot(. ,aes(x=as.numeric(percent), y=net))+
+  geom_smooth(method = "lm")+
+  geom_point(color = "black", alpha = 0.5)+
+  facet_wrap(~Sector)+
+  geom_hline(yintercept = 0, linetype="dashed")+
+  theme_bw()+
+  labs(x="Average Children from other LAs placed inside (%))", y="Net change to children's homes number\n(2016-2023)")+
+  coord_cartesian(ylim = c(-30,30))
+
+ggsave(plot=plot, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/NF_report/Figures/children_homes_away.jpeg", width=8, height=6, dpi=600)
 
