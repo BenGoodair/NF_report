@@ -392,8 +392,8 @@ plotfun <- la_df %>%
   dplyr::summarise(percent = sum(as.numeric(percent), na.rm=T))%>%
   dplyr::ungroup()
 
-median(plotfun[plotfun$year==2011,]$percent, na.rm=T)
-median(plotfun[plotfun$year==2022,]$percent, na.rm=T)
+mean(plotfun[plotfun$year==2011,]$percent, na.rm=T)
+mean(plotfun[plotfun$year==2023,]$percent, na.rm=T)
 
   dpplot <- ggplot(plotfun, aes(x = year, y = percent)) +
   geom_point(size = 2, color = "#B4CFEE", alpha = 0.3) +
@@ -422,7 +422,8 @@ median(plotfun[plotfun$year==2022,]$percent, na.rm=T)
         strip.background = element_rect(fill="gray90", colour="black", size=1),
         strip.text = element_text(face="bold", size=16),
         title=element_text(face="bold")) +
-  scale_fill_manual(values=c("#2A6EBB","#B4CFEE", "#1F5189" ))
+  scale_fill_manual(values=c("#2A6EBB","#B4CFEE", "#1F5189" ))+
+    scale_x_continuous(breaks=c(2009,2011, 2013,2015, 2017, 2019, 2021,2023))
 
 #ggsave(plot=dpplot, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/NF_report/Figures/children_outsourced_total_spend.jpeg", width=8, height=6, dpi=600)
 
@@ -464,7 +465,9 @@ dpplot2 <- ggplot(plotfun, aes(x=year, y=percent, fill=subcategory))+
         strip.background = element_rect(fill="gray90", colour="black", size=1),
         strip.text = element_text(face="bold", size=16),
         title=element_text(face="bold")) +
-  scale_fill_manual(values=c("#2A6EBB","#B4CFEE", "#1F5189" ))
+  scale_fill_manual(values=c("#2A6EBB","#B4CFEE", "#1F5189" ))+
+  scale_x_continuous(breaks=c(2009,2011, 2013,2015, 2017, 2019, 2021,2023))
+
 
 jaa <- cowplot::plot_grid(dpplot, dpplot2, ncol=2, labels = c("A","B"), rel_widths = c(0.7,1))
 
@@ -487,7 +490,7 @@ plotfun <- la_df %>%
   dplyr::summarise(percent = sum(as.numeric(percent), na.rm=T))%>%
   dplyr::ungroup()
 
-median(plotfun[plotfun$year==2022&plotfun$variable=="Residential care",]$percent, na.rm=T)
+mean(plotfun[plotfun$year==2023&plotfun$variable=="Residential care",]$percent, na.rm=T)
 
 dpplot <- ggplot(plotfun, aes(x = year, y = percent)) +
   geom_point(size = 2, color = "#B4CFEE", alpha = 0.3) +
@@ -499,9 +502,11 @@ dpplot <- ggplot(plotfun, aes(x = year, y = percent)) +
     color = "Outsourced spend %"
   )+
   theme_bw()+
-  facet_wrap(~variable, ncol=1)
+  facet_wrap(~variable)+
+  scale_x_continuous(breaks=c(2009,2011, 2013,2015, 2017, 2019, 2021,2023))
 
-ggsave(plot=dpplot, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/NF_report/Figures/children_outsourced_total_spend_services.jpeg", width=8, height=10, dpi=600)
+
+ggsave(plot=dpplot, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/NF_report/Figures/children_outsourced_total_spend_services.jpeg", width=8, height=8, dpi=600)
 
 ####children's homes#####
 
