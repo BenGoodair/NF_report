@@ -14,6 +14,8 @@ carehomes <- read.csv("C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/C
 ####ASC Outsourcing expenditure####
 
 
+
+
 ####Total over 65####
 plotfun <- fulldata %>%
   dplyr::mutate(SupportSetting = tolower(SupportSetting))%>%
@@ -27,7 +29,7 @@ dpplot <- ggplot(plotfun, aes(x = year, y = percent_sector)) +
   geom_smooth(method = "loess", se = FALSE) +
   labs(
     x = "Year",
-    y = "Spend on Outsourced Provision (%)",
+    y = "Expenditure on Outsourced Provision (%)",
     title = "Aged 65 and over, all expenditure",
     color = "Outsourced spend %"
   )+
@@ -329,6 +331,52 @@ dpplot <- ggplot(plotfun, aes(x = year, y = percent)) +
   scale_x_continuous(breaks=c(2011,2014, 2017, 2020,2023))
 
 #gsave(plot=dpplot, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/NF_report/Figures/children_outsourced_residential_placements.jpeg", width=8, height=6, dpi=600)
+
+
+
+####children's out of area residential placement####
+
+
+plotfun <- la_df %>%
+  dplyr::filter(variable=="Placed outside the local authority boundary")%>%
+  dplyr::select(year,percent,LA_Name)%>%
+  dplyr::group_by(LA_Name, year)%>%
+  dplyr::summarise(percent = sum(as.numeric(percent), na.rm=T))%>%
+  dplyr::ungroup()
+
+mean(plotfun[plotfun$year==2011,]$percent, na.rm=T)
+
+dpplot <- ggplot(plotfun, aes(x = year, y = percent)) +
+  geom_point(size = 2, color = "#B4CFEE", alpha = 0.3) +
+  geom_smooth(method = "loess", se = FALSE) +
+  labs(
+    x = "Year",
+    y = "Out of area Placements (%)",
+    #title = "LA Variation",
+    #color = "Outsourced spend %"
+  )+
+  theme_bw()+
+  theme(text = element_text(size=20),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        axis.ticks.length=unit(.28, "cm"),
+        axis.line.x = element_line(size = 0.5, linetype = "solid", colour = "black"),
+        axis.line.y = element_line(size = 0.5, linetype = "solid", colour = "black"),
+        axis.line = element_line(colour = "black"),
+        axis.title = element_text(size=24),
+        axis.text.x = element_text(size=18),
+        axis.text.y = element_text(size=20),
+        legend.title = element_blank(),
+        legend.box.background = element_rect(colour = "black", size = 1),
+        legend.text = element_text(size=20),
+        legend.position = "top",
+        strip.background = element_rect(fill="gray90", colour="black", size=1),
+        strip.text = element_text(face="bold", size=16),
+        title=element_text(face="bold")) +
+  scale_fill_manual(values=c("#2A6EBB","#B4CFEE", "#1F5189" ))+
+  scale_x_continuous(breaks=c(2011,2014, 2017, 2020,2023))
+
+#ggsave(plot=dpplot, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/NF_report/Figures/children_out_of_area_placements.jpeg", width=8, height=6, dpi=600)
 
 
 ####children's outsourced residential placement FP break####
@@ -1288,27 +1336,49 @@ plotfun <- la_df %>%
   dplyr::summarise(percent = sum(as.numeric(percent), na.rm=T))%>%
   dplyr::ungroup()
 
-median(plotfun[plotfun$year==2022&plotfun$variable=="Residential care",]$percent, na.rm=T)
+plotfun <- plotfun[plotfun$variable=="Placed inside the local authority boundary",]
 
-dpplot <- ggplot(plotfun, aes(x = year, y = percent)) +
+median(plotfun[plotfun$year==2011&plotfun$variable=="Placed inside the local authority boundary",]$percent, na.rm=T)
+
+dpplotone <- ggplot(plotfun, aes(x = year, y = percent)) +
   geom_point(size = 2, color = "#B4CFEE", alpha = 0.3) +
   geom_smooth(method = "loess", se = FALSE) +
   labs(
     x = "Year",
-    y = "Percent (%)",
-    title = "",
+    y = "Percent of children placed within their LA boundary (%)",
+    title = "Placement Location",
     color = ""
   )+
   theme_bw()+
-  facet_wrap(~variable)
+  scale_x_continuous(breaks=c(2011,2013, 2015, 2017,2019, 2021, 2023))
 
-ggsave(plot=dpplot, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/NF_report/Figures/children_place_qual.jpeg", width=8, height=6, dpi=600)
 
-ProviderData %>%
-  dplyr::filter(year==2022)%>%
-  dplyr::distinct(URN, .keep_all = T)%>%
-  dplyr::group_by(Sector)%>%
-  count()
+plotfun <- read.csv(curl("https://raw.githubusercontent.com/BenGoodair/CSC_Outsourcing_Placement_Outcomes/main/Data/placement_data_final.csv"))
+
+
+dpplottwo <- ggplot(plotfun, aes(x = year, y = per_less_than_2yrs)) +
+  geom_point(size = 2, color = "#B4CFEE", alpha = 0.3) +
+  geom_smooth(method = "loess", se = FALSE) +
+  labs(
+    x = "Year",
+    y = "Percent of children in same placement for over 2 years (%)",
+    title = "Placement Stability",
+    color = ""
+  )+
+  theme_bw()+
+  scale_x_continuous(breaks=c(2011,2013, 2015, 2017,2019, 2021))
+
+
+yepl <- cowplot::plot_grid(dpplotone, dpplottwo, labels = c("A","B"))
+
+
+ggsave(plot=yepl, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/NF_report/Figures/children_place_qual.jpeg", width=8, height=6, dpi=600)
+
+# ProviderData %>%
+#   dplyr::filter(year==2022)%>%
+#   dplyr::distinct(URN, .keep_all = T)%>%
+#   dplyr::group_by(Sector)%>%
+#   count()
 
 ####children's homes by deprivation####
 
@@ -1411,10 +1481,11 @@ plot2 <- dplyr::full_join(leaves, joins, by=c("Average_house_price", "Sector"))%
                  homes = ifelse(is.na(homes), 0, homes),
                  places = ifelse(is.na(places), 0, places),
                  net = homes_j-homes,
+                net_places = places_j-places,
                 Sector = ifelse(Sector=="Private", "For-profit",
                                 ifelse(Sector=="Voluntary", "Third Sector", "Local Authority")))%>%
   dplyr::filter(Average_house_price<1000000)%>%
-  ggplot(. ,aes(x=as.numeric(Average_house_price), y=net))+
+  ggplot(. ,aes(x=(as.numeric(Average_house_price)), y=net_places))+
   geom_smooth(method = "lm")+
   geom_point(color = "black", alpha = 0.5)+
   facet_wrap(~Sector)+
