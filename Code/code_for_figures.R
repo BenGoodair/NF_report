@@ -3,13 +3,285 @@ if (!require("pacman")) install.packages("pacman")
 
 pacman::p_load(devtools, dplyr, tidyverse, tidyr, stringr,  curl, plm, readxl, zoo, stringr, patchwork)
 
+####create Data####
 
-fulldata <- read.csv("C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/adults_social_care_data/expenditure.csv")
-df <- read.csv("C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/adults_social_care_data/activity_keep_all.csv")
+fulldata <- read.csv(curl("https://raw.githubusercontent.com/BenGoodair/adults_social_care_data/main/Final_data/expenditure.csv"))
+df <- read.csv(curl("https://raw.githubusercontent.com/BenGoodair/adults_social_care_data/main/Final_data/activity_keep_all.csv"))
 la_df <- read.csv(curl("https://raw.githubusercontent.com/BenGoodair/childrens_social_care_data/main/Final_Data/outputs/dashboard_data.csv"))
-exits <- read.csv(curl("https://raw.githubusercontent.com/BenGoodair/childrens_social_care_data/main/Final_Data/outputs/enter_exit.csv"))
+#exits <- read.csv(curl("https://raw.githubusercontent.com/BenGoodair/childrens_social_care_data/main/Final_Data/outputs/enter_exit.csv"))
 ProviderData = read.csv(curl("https://raw.githubusercontent.com/BenGoodair/childrens_social_care_data/main/Final_Data/outputs/Provider_data.csv"))
-carehomes <- read.csv("C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/Children's Care Homes Project/Data/Ben report dates.csv")
+carehomes <- read.csv("Library/CloudStorage/OneDrive-Nexus365/Documents/Children's Care Homes Project/Data/Ben report dates.csv")
+
+#updated exits, entries
+
+
+joiners17 <- read.csv(curl("https://raw.githubusercontent.com/BenGoodair/childrens_social_care_data/main/Raw_Data/Provider_level/joiners_leavers_17.csv"))  
+joiners18 <- read.csv(curl("https://raw.githubusercontent.com/BenGoodair/childrens_social_care_data/main/Raw_Data/Provider_level/joiners_leavers_18.csv"))  
+joiners19 <- read.csv(curl("https://raw.githubusercontent.com/BenGoodair/childrens_social_care_data/main/Raw_Data/Provider_level/joiners_leavers_19.csv"))  
+joiners20 <- read.csv(curl("https://raw.githubusercontent.com/BenGoodair/childrens_social_care_data/main/Raw_Data/Provider_level/joiners_leavers_20.csv"))  
+joiners21 <- read.csv(curl("https://raw.githubusercontent.com/BenGoodair/childrens_social_care_data/main/Raw_Data/Provider_level/joiners_leavers_21.csv"))  
+joiners22 <- read.csv(curl("https://raw.githubusercontent.com/BenGoodair/childrens_social_care_data/main/Raw_Data/Provider_level/joiners_leavers_22.csv"), skip=3)  
+joiners23 <- read.csv(curl("https://raw.githubusercontent.com/BenGoodair/childrens_social_care_data/main/Raw_Data/Provider_level/joiners_leavers_23.csv"), skip=3)  
+
+joiners <- rbind( #joiners17 %>% dplyr::filter(Joiner.status=="Joiner") %>% dplyr::select(URN, Provision.type, Local.authority, Sector, Places, First.effective.date..that.the.provider.became.active.) %>% dplyr::rename(Registration.date = First.effective.date..that.the.provider.became.active.),
+  #joiners18 %>% dplyr::filter(Joiner.status=="Joiner") %>% dplyr::select(URN, Provision.type, Local.authority, Sector, Places,First.effective.date..that.the.provider.became.active.) %>% dplyr::rename(Registration.date = First.effective.date..that.the.provider.became.active.),
+  joiners19 %>% dplyr::filter(Joiner.status=="Joiner") %>% dplyr::select(URN, Provision.type, Local.authority, Sector, Places, Registration.date),
+  joiners20 %>% dplyr::filter(Joiner.status=="Joiner") %>% dplyr::select(URN, Provision.type, Local.authority, Sector, Places, Registration.date),
+  joiners21 %>% dplyr::filter(Joiner.status=="Joiner") %>% dplyr::select(URN, Provision.type, Local.authority, Sector, Places, Registration.date),
+  joiners22 %>% dplyr::filter(Joiner.status=="Joiner") %>% dplyr::select(URN, Provision.type, Local.authority, Sector, Places, Registration.date),
+  joiners23 %>% dplyr::filter(Joiner.status=="Joiner") %>% dplyr::select(URN, Provision.type, Local.authority, Sector, Places, First.effective.date..that.the.provider.became.active.) %>% dplyr::rename(Registration.date = First.effective.date..that.the.provider.became.active.)
+)%>%
+  dplyr::rename(Date = Registration.date)%>%
+  dplyr::mutate(leave_join = "Join",
+                provider_status = NA)%>%
+  dplyr::filter(Provision.type!="Adoption Support Agency",
+                Provision.type!="Further Education College with Residential Accommodation",
+                Provision.type!="Boarding School",
+                Provision.type!="Residential Family Centre",
+                Provision.type!="Residential Special School",
+                Provision.type!="Voluntary Adoption Agency",
+                Provision.type!="Residential Holiday Scheme for Disabled Children",
+                Provision.type!="Independent Fostering Agency",
+                Provision.type!="Voluntary Adoption Agency")
+
+
+Leavers <- rbind( #joiners17 %>% dplyr::filter(Leaver.status=="Leaver") %>% dplyr::select(URN, Provision.type, Local.authority, Sector, Places, First.effective.date..that.the.provider.became.active.) %>% dplyr::rename(Registration.date = First.effective.date..that.the.provider.became.active.),
+  #joiners18 %>% dplyr::filter(Leaver.status=="Leaver") %>% dplyr::select(URN, Provision.type, Local.authority, Sector, Places,First.effective.date..that.the.provider.became.active.) %>% dplyr::rename(Registration.date = First.effective.date..that.the.provider.became.active.),
+  joiners19 %>% dplyr::filter(Leaver.status=="Leaver") %>% dplyr::select(URN, Provision.type, Local.authority, Sector, Places, Date.closed)%>%
+    dplyr::rename(Cancelled.or.resigned.date = Date.closed),
+  joiners20 %>% dplyr::filter(Leaver.status=="Leaver") %>% dplyr::select(URN, Provision.type, Local.authority, Sector, Places, Cancelled.or.resigned.date),
+  joiners21 %>% dplyr::filter(Leaver.status=="Leaver") %>% dplyr::select(URN, Provision.type, Local.authority, Sector, Places, Resigned.closed.date)%>%
+    dplyr::rename(Cancelled.or.resigned.date=Resigned.closed.date),
+  joiners22 %>% dplyr::filter(Leaver.status=="Leaver") %>% dplyr::select(URN, Provision.type, Local.authority, Sector, Places, Cancelled.or.resigned.date),
+  joiners23 %>% dplyr::filter(Leaver.status=="Leaver") %>% 
+    dplyr::mutate(Cancelled.or.resigned.date = ifelse(First.effective.date..that.the.provider.became.resigned.!="",First.effective.date..that.the.provider.became.resigned.,
+                                                      ifelse(First.effective.date..that.the.provider.became.resigned.==""&First.effective.date..that.the.provider.closed.=="", First.effective.date..that.the.provider.became.cancelled.,
+                                                             First.effective.date..that.the.provider.closed.)))%>% dplyr::select(URN, Provision.type, Local.authority, Sector, Places,Cancelled.or.resigned.date) 
+)%>%
+  dplyr::rename(Date = Cancelled.or.resigned.date)%>%
+  dplyr::mutate(leave_join = "Leave",
+                provider_status = NA)%>%
+  dplyr::filter(Provision.type!="Adoption Support Agency",
+                Provision.type!="Further Education College with Residential Accommodation",
+                Provision.type!="Boarding School",
+                Provision.type!="Residential Family Centre",
+                Provision.type!="Residential Special School",
+                Provision.type!="Voluntary Adoption Agency",
+                Provision.type!="Residential Holiday Scheme for Disabled Children",
+                Provision.type!="Independent Fostering Agency",
+                Provision.type!="Voluntary Adoption Agency")
+
+
+exits <- rbind(joiners, Leavers)
+
+pre <- rbind(
+  read_excel("Library/CloudStorage/OneDrive-Nexus365/Documents/GitHub/Github_new/Care Markets/Data/Raw/Children_s_homes_registrations_transparency_dataset (1).xls", sheet = 3, skip=3) %>%
+    dplyr::mutate(leave_join = "Join")%>%
+    dplyr::rename(Date = `Registration date`),
+  read_excel("Library/CloudStorage/OneDrive-Nexus365/Documents/GitHub/Github_new/Care Markets/Data/Raw/Children_s_homes_registrations_transparency_dataset (1).xls", sheet = 4, skip=3) %>%
+    dplyr::mutate(leave_join = "Leave")%>%
+    dplyr::rename(Date = `Date closed`),
+  read_excel("Library/CloudStorage/OneDrive-Nexus365/Documents/GitHub/Github_new/Care Markets/Data/Raw/Children_s_homes_registrations_transparency_dataset (1).xls", sheet = 5, skip=3) %>%
+    dplyr::mutate(leave_join = "Join")%>%
+    dplyr::rename(Date = `Registration date`),
+  read_excel("Library/CloudStorage/OneDrive-Nexus365/Documents/GitHub/Github_new/Care Markets/Data/Raw/Children_s_homes_registrations_transparency_dataset (1).xls", sheet = 6, skip=3) %>%
+    dplyr::mutate(leave_join = "Leave")%>%
+    dplyr::rename(Date = `Date closed`),
+  read_excel("Library/CloudStorage/OneDrive-Nexus365/Documents/GitHub/Github_new/Care Markets/Data/Raw/Children_s_homes_registrations_transparency_dataset (1).xls", sheet = 7, skip=3) %>%
+    dplyr::mutate(leave_join = "Join")%>%
+    dplyr::rename(Date = `Registration date`),
+  read_excel("Library/CloudStorage/OneDrive-Nexus365/Documents/GitHub/Github_new/Care Markets/Data/Raw/Children_s_homes_registrations_transparency_dataset (1).xls", sheet = 8, skip=3) %>%
+    dplyr::mutate(leave_join = "Leave")%>%
+    dplyr::rename(Date = `Date closed`),
+  read_excel("Library/CloudStorage/OneDrive-Nexus365/Documents/GitHub/Github_new/Care Markets/Data/Raw/Children_s_homes_registrations_transparency_dataset (1).xls", sheet = 9, skip=3) %>%
+    dplyr::mutate(leave_join = "Join")%>%
+    dplyr::rename(Date = `Registration date`),
+  read_excel("Library/CloudStorage/OneDrive-Nexus365/Documents/GitHub/Github_new/Care Markets/Data/Raw/Children_s_homes_registrations_transparency_dataset (1).xls", sheet = 10, skip=3) %>%
+    dplyr::mutate(leave_join = "Leave")%>%
+    dplyr::rename(Date = `Date closed`)
+)
+
+all <- rbind(pre%>%
+               dplyr::rename(Provision.type = `Provider type`,
+                             Local.authority=`Local authority`)%>%
+               dplyr::mutate(Local.authority = Local.authority %>%
+                               gsub('&', 'and', .) %>%
+                               gsub('[[:punct:] ]+', ' ', .) %>%
+                               gsub('[0-9]', '', .)%>%
+                               toupper() %>%
+                               gsub("CITY OF", "",.)%>%
+                               gsub("UA", "",.)%>%
+                               gsub("COUNTY OF", "",.)%>%
+                               gsub("ROYAL BOROUGH OF", "",.)%>%
+                               gsub("LEICESTER CITY", "LEICESTER",.)%>%
+                               gsub("UA", "",.)%>%
+                               gsub("DARWIN", "DARWEN", .)%>%
+                               gsub("COUNTY DURHAM", "DURHAM", .)%>%
+                               gsub("AND DARWEN", "WITH DARWEN", .)%>%
+                               gsub("NE SOM", "NORTH EAST SOM", .)%>%
+                               gsub("N E SOM", "NORTH EAST SOM", .)%>%
+                               str_trim())%>% dplyr::select(URN,Local.authority,Sector,Places,Date,leave_join), 
+             exits%>% dplyr::select(URN,Local.authority,Sector,Places,Date, leave_join)%>%
+               dplyr::mutate(Date = as.Date(Date, format = "%d/%m/%Y")) %>%  # Convert Date to Date format
+               dplyr::filter(Date >= as.Date("2018-04-01"))  # Filter for dates after 1st April 2018
+)%>%  
+  dplyr::distinct(URN,leave_join, .keep_all = T)%>%
+  tidyr::pivot_wider(id_cols = c("Local.authority", "Sector", "URN", "Places"), names_from = "leave_join", values_from = as.character("Date"))%>%
+  dplyr::mutate(Join = substr(Join, 1, 10),
+                Leave = substr(Leave, 1, 10),
+                Sector= ifelse(Sector=="Health Authority", "Local Authority", Sector))
+
+
+leaves <- all %>%
+  dplyr::select(URN,Leave)
+
+all <- all %>%
+  dplyr::select(-Leave)%>%
+  full_join(., leaves, by= "URN")  %>%
+  group_by(URN) %>%                      # Group by URN
+  fill(Leave, .direction = "downup") %>% 
+  fill(Join, .direction = "downup")%>%
+  ungroup()%>%
+  dplyr::distinct(URN, .keep_all = T)%>%
+  dplyr::mutate(Local.authority = Local.authority %>%
+                  gsub('&', 'and', .) %>%
+                  gsub('[[:punct:] ]+', ' ', .) %>%
+                  gsub('[0-9]', '', .)%>%
+                  toupper() %>%
+                  gsub("CITY OF", "",.)%>%
+                  gsub("UA", "",.)%>%
+                  gsub("COUNTY OF", "",.)%>%
+                  gsub("ROYAL BOROUGH OF", "",.)%>%
+                  gsub("LEICESTER CITY", "LEICESTER",.)%>%
+                  gsub("UA", "",.)%>%
+                  gsub("DARWIN", "DARWEN", .)%>%
+                  gsub("COUNTY DURHAM", "DURHAM", .)%>%
+                  gsub("AND DARWEN", "WITH DARWEN", .)%>%
+                  gsub("NE SOM", "NORTH EAST SOM", .)%>%
+                  gsub("N E SOM", "NORTH EAST SOM", .)%>%
+                  str_trim())
+
+
+
+
+
+
+
+fulldf <-rbind( read.csv(curl("https://raw.githubusercontent.com/BenGoodair/Care-Markets/main/Data/Raw/provider_at_march_2015.csv"))%>%
+              dplyr::mutate(year=2015,
+                            Places= NA)%>%
+              dplyr::rename(Registration.status=Reg.Status)%>%
+              dplyr::filter(str_detect(Provision.type, "(?i)home")|
+                              str_detect(Provision.type, "(?i)day"))%>%
+              dplyr::select(Sector,URN, Places, Local.authority),
+            
+            read.csv(curl("https://raw.githubusercontent.com/BenGoodair/Care-Markets/main/Data/Raw/provider_at_march_2016.csv"), skip=1)%>%
+              dplyr::mutate(year=2016)%>%
+              dplyr::filter(str_detect(Provision.type, "(?i)home"))%>%
+              dplyr::select(Sector, URN, Places, Local.authority),
+            
+            read.csv(curl("https://raw.githubusercontent.com/BenGoodair/Care-Markets/main/Data/Raw/provider_at_march_2017.csv"), skip=1)%>%
+              dplyr::mutate(year=2017)%>%
+              dplyr::filter(str_detect(Provision.type, "(?i)home"))%>%
+              dplyr::select(Sector, URN, Places, Local.authority),
+            
+            read.csv(curl("https://raw.githubusercontent.com/BenGoodair/Care-Markets/main/Data/Raw/provider_at_march_2018.csv"), skip=1)%>%
+              dplyr::mutate(year=2018)%>%
+              dplyr::filter(str_detect(Provision.type, "(?i)home"))%>%
+              dplyr::select(Sector, URN, Places, Local.authority),
+            
+            read.csv(curl("https://raw.githubusercontent.com/BenGoodair/Care-Markets/main/Data/Raw/provider_at_march_2018_part2.csv"))%>%
+              dplyr::mutate(year=2018)%>%
+              dplyr::filter(str_detect(Provision.type, "(?i)home"))%>%
+              dplyr::select(Sector, URN, Places, Local.authority),
+            
+            
+            read.csv(curl("https://raw.githubusercontent.com/BenGoodair/Care-Markets/main/Data/Raw/provider_at_march_2019.csv"), skip=1)%>%
+              dplyr::mutate(year=2019)%>%
+              dplyr::filter(str_detect(Provision.type, "(?i)home"))%>%
+              dplyr::select(Sector, URN, Places, Local.authority),
+            
+            
+            read.csv(curl("https://raw.githubusercontent.com/BenGoodair/Care-Markets/main/Data/Raw/provider_at_march_2020.csv"), skip=1)%>%
+              dplyr::mutate(year=2020)%>%
+              dplyr::filter(str_detect(Provision.type, "(?i)home"))%>%
+              dplyr::select(Sector, URN, Places, Local.authority),
+            
+            
+            read.csv(curl("https://raw.githubusercontent.com/BenGoodair/Care-Markets/main/Data/Raw/provider_at_march_2021.csv"), skip=1)%>%
+              dplyr::mutate(year=2021)%>%
+              dplyr::filter(str_detect(Provision.type, "(?i)home"))%>%
+              dplyr::select(Sector, URN, Places, Local.authority),
+            
+            
+            read.csv(curl("https://raw.githubusercontent.com/BenGoodair/Care-Markets/main/Data/Raw/provider_at_march_2022_yep.csv"), skip=4)%>%
+              dplyr::mutate(year=2022)%>%
+              dplyr::filter(str_detect(Provision.type, "(?i)home"))%>%
+              dplyr::select(Sector, URN, Places, Local.authority),
+            
+            
+            read.csv(curl("https://raw.githubusercontent.com/BenGoodair/Care-Markets/main/Data/Raw/provider_at_march_2023.csv"), skip=3)%>%
+              dplyr::mutate(year=2023)%>%
+              dplyr::filter(str_detect(Provision.type, "(?i)home"))%>%
+              dplyr::select(Sector, URN, Places, Local.authority))%>%
+  dplyr::mutate(Sector= ifelse(Sector=="Health Authority"|Sector=="Local authority"|Sector=="Health authority", "Local Authority", Sector),
+                Homes=1)%>%
+  dplyr::distinct(.keep_all = T)%>%
+  group_by(URN) %>%                      # Group by URN
+  fill(Places, .direction = "downup") %>% 
+  ungroup()%>%
+  bind_rows(., all %>% 
+              dplyr::select(URN, Places, Local.authority)%>%
+              dplyr::mutate(Homes = NA, 
+                            Sector=NA,
+                            Places = as.numeric(Places)))%>%
+  group_by(URN) %>%                      # Group by URN
+  fill(Places, .direction = "downup") %>% 
+  ungroup()%>%
+  dplyr::filter(!is.na(Sector))%>%
+  dplyr::mutate(Local.authority = Local.authority %>%
+                  gsub('&', 'and', .) %>%
+                  gsub('[[:punct:] ]+', ' ', .) %>%
+                  gsub('[0-9]', '', .)%>%
+                  toupper() %>%
+                  gsub("CITY OF", "",.)%>%
+                  gsub("UA", "",.)%>%
+                  gsub("COUNTY OF", "",.)%>%
+                  gsub("ROYAL BOROUGH OF", "",.)%>%
+                  gsub("LEICESTER CITY", "LEICESTER",.)%>%
+                  gsub("UA", "",.)%>%
+                  gsub("DARWIN", "DARWEN", .)%>%
+                  gsub("COUNTY DURHAM", "DURHAM", .)%>%
+                  gsub("AND DARWEN", "WITH DARWEN", .)%>%
+                  gsub("NE SOM", "NORTH EAST SOM", .)%>%
+                  gsub("N E SOM", "NORTH EAST SOM", .)%>%
+                  str_trim())%>%
+  dplyr::full_join(., all%>%
+                     dplyr::select(-Places, -Local.authority, -Sector)%>%
+                     dplyr::filter(as.Date(Leave)>="2015-04-01"|
+                                     is.na(Leave))%>%
+                     dplyr::filter(as.Date(Join)<"2023-04-01"|
+                                     is.na(Join)), by=c("URN"))
+
+
+yes <- fulldf %>% dplyr::filter(is.na(Local.authority))%>%
+  dplyr::mutate(keep = 1)%>%
+  dplyr::select(URN, keep)%>%
+  full_join(., all, by="URN")%>%
+  dplyr::filter(keep==1)
+
+
+exits <- fulldf%>% dplyr::filter(!is.na(Local.authority))%>%
+  bind_rows(., yes%>%
+              dplyr::mutate(Places = as.numeric(Places)))
+
+
+
+
+rm(list=setdiff(ls(), c("exits", "fulldata", "df", "la_df", "ProviderData", "carehomes")))
+
+  
+
 
 ####ASC Outsourcing expenditure####
 
@@ -1382,182 +1654,92 @@ ggsave(plot=yepl, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Docume
 
 ####children's homes by deprivation####
 
-leaves <- exits %>%
-  dplyr::select(leave_join, imd_decile, Sector,IMD.2019...Extent, Places)%>%
-  dplyr::filter(leave_join=="Leave")%>%
-  dplyr::mutate(yes = 1)%>%
-  dplyr::group_by(imd_decile,IMD.2019...Extent, Sector )%>%
-  dplyr::summarise(homes = sum(yes),
-                   places = sum(Places, na.rm=T))%>%
-  dplyr::ungroup()
 
-leaves <- leaves %>%
-  dplyr::full_join(., tidyr:: expand_grid(leaves %>% 
-                                            dplyr::select(IMD.2019...Extent)%>%
-                                            dplyr::distinct(), 
-                                          c("Local Authority", "Private", "Voluntary"))%>%
-                     dplyr::rename(Sector = `c("Local Authority", "Private", "Voluntary")`),
-                   by=c("IMD.2019...Extent", "Sector"))
-  
-
-joins <- exits %>%
-  dplyr::select(leave_join, imd_decile, Sector,IMD.2019...Extent, Places)%>%
-  dplyr::filter(leave_join=="Join")%>%
-  dplyr::mutate(yes = 1)%>%
-  dplyr::group_by(imd_decile,IMD.2019...Extent, Sector )%>%
-  dplyr::summarise(homes_j = sum(yes),
-                   places_j = sum(Places, na.rm=T))%>%
-  dplyr::ungroup()
-
-joins <- joins %>%
-  dplyr::full_join(., tidyr:: expand_grid(joins %>% 
-                                            dplyr::select(IMD.2019...Extent)%>%
-                                            dplyr::distinct(), 
-                                          c("Local Authority", "Private", "Voluntary"))%>%
-                     dplyr::rename(Sector = `c("Local Authority", "Private", "Voluntary")`),
-                   by=c("IMD.2019...Extent", "Sector"))
-
-plot <- dplyr::full_join(leaves, joins, by=c("IMD.2019...Extent", "Sector"))%>%
-  dplyr::mutate(homes_j = ifelse(is.na(homes_j), 0, homes_j),
-                places_j = ifelse(is.na(places_j), 0, homes_j),
-                homes = ifelse(is.na(homes), 0, homes),
-                places = ifelse(is.na(places), 0, places),
-                net = homes_j-homes,
-                Sector = ifelse(Sector=="Private", "For-profit",
-                                ifelse(Sector=="Voluntary", "Third Sector", "Local Authority")))%>%
-  ggplot(. ,aes(x=as.numeric(IMD.2019...Extent)*100, y=net))+
+plot <- exits %>%
+  dplyr::arrange(Places)%>%
+  dplyr::distinct(URN, .keep_all = T)%>%
+  dplyr::mutate(Homes= ifelse(!is.na(Join)&is.na(Leave), 1,
+                              ifelse(!is.na(Leave)&is.na(Join), -1,
+                                     0)),
+                Places= ifelse(!is.na(Join)&is.na(Leave), Places,
+                               ifelse(!is.na(Leave)&is.na(Join), Places*-1,
+                                      0)))%>%
+  dplyr::select(Local.authority, Homes, Places,Sector)%>%
+  dplyr::group_by(Local.authority, Sector)%>%
+  dplyr::summarise(Homes = sum(Homes),
+                   Places = sum(Places))%>%
+  dplyr::ungroup()%>%
+  tidyr::complete(Local.authority, Sector = c("Private", "Local Authority", "Voluntary"))%>%
+  dplyr::mutate(Homes=ifelse(is.na(Homes), 0, Homes),
+                Places=ifelse(is.na(Places), 0, Places))%>%
+  dplyr::left_join(., read.csv(curl("https://raw.githubusercontent.com/BenGoodair/childrens_social_care_data/main/Final_Data/outputs/enter_exit.csv"))%>%
+                     dplyr::select(Local.authority, IMD.2019...Extent, Average_house_price)%>%
+                     dplyr::distinct(.keep_all = T), by="Local.authority")%>%
+  dplyr::left_join(., read.csv(curl("https://raw.githubusercontent.com/BenGoodair/childrens_social_care_data/main/Final_Data/outputs/dashboard_data.csv"))%>%
+                     dplyr::filter(!LA_Name=="Dorset"&!LA_Code=="E10000009")%>%
+                     dplyr::filter(variable=="Net gain of children by responsible LA"&year==2023)%>%
+                     dplyr::rename(Local.authority = LA_Name),
+                   by="Local.authority")%>%
+  dplyr::mutate(Sector = ifelse(Sector=="Private", "For-profit",
+                  ifelse(Sector=="Voluntary", "Third Sector", "Local Authority")))%>%
+  dplyr::filter(!str_detect(Local.authority, "(?i)northampton"))%>%
+  ggplot(., aes(y=Homes, x=as.numeric(number)))+
   geom_smooth(method = "lm")+
   geom_point(color = "black", alpha = 0.5)+
   facet_wrap(~Sector)+
   geom_hline(yintercept = 0, linetype="dashed")+
   theme_bw()+
-  labs(x="Population in deprivation (%)", y="Net change to children's homes number\n(2016-2023)")+
-  coord_cartesian(ylim=c(-20,40))
+  labs(x="Additional children in care placed inside LA\n(Net gain, 2023)", y="Net change to children's homes\n(2014-2023)")
+  
+   
 
-ggsave(plot=plot, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/NF_report/Figures/children_place_dep.jpeg", width=8, height=6, dpi=600)
+ggsave(plot=plot, filename="Library/CloudStorage/OneDrive-Nexus365/Documents/GitHub/GitHub_new/NF_report/Figures/children_place_net_gain.jpeg", width=8, height=6, dpi=600)
 
 
 ####children's by houseprice####
 
 
-leaves <- exits %>%
-  dplyr::select(Average_house_price, Places,leave_join, Sector)%>%
-  dplyr::filter(leave_join=="Leave")%>%
-  dplyr::mutate(yes = 1)%>%
-  dplyr::group_by(Average_house_price, Sector )%>%
-  dplyr::summarise(homes = sum(yes),
-                   places = sum(as.numeric(Places), na.rm=T))%>%
-  dplyr::ungroup()
-
-leaves <- leaves %>%
-  dplyr::full_join(., tidyr:: expand_grid(leaves %>% 
-                                            dplyr::select(Average_house_price)%>%
-                                            dplyr::distinct(), 
-                                          c("Local Authority", "Private", "Voluntary"))%>%
-                     dplyr::rename(Sector = `c("Local Authority", "Private", "Voluntary")`),
-                   by=c("Average_house_price", "Sector"))
-
-
-joins <- exits %>%
-  dplyr::select(Average_house_price, Places,leave_join, Sector)%>%
-  dplyr::filter(leave_join=="Join")%>%
-  dplyr::mutate(yes = 1)%>%
-  dplyr::group_by(Average_house_price, Sector )%>%
-  dplyr::summarise(homes_j = sum(yes),
-                   places_j = sum(as.numeric(Places), na.rm=T))%>%
-  dplyr::ungroup()
-
-joins <- joins %>%
-  dplyr::full_join(., tidyr:: expand_grid(joins %>% 
-                                            dplyr::select(Average_house_price)%>%
-                                            dplyr::distinct(), 
-                                          c("Local Authority", "Private", "Voluntary"))%>%
-                     dplyr::rename(Sector = `c("Local Authority", "Private", "Voluntary")`),
-                   by=c("Average_house_price", "Sector"))
-
-plot2 <- dplyr::full_join(leaves, joins, by=c("Average_house_price", "Sector"))%>%
-  dplyr::mutate(homes_j = ifelse(is.na(homes_j), 0, homes_j),
-                 places_j = ifelse(is.na(places_j), 0, homes_j),
-                 homes = ifelse(is.na(homes), 0, homes),
-                 places = ifelse(is.na(places), 0, places),
-                 net = homes_j-homes,
-                net_places = places_j-places,
-                Sector = ifelse(Sector=="Private", "For-profit",
+plot <- exits %>%
+  dplyr::arrange(Places)%>%
+  dplyr::distinct(URN, .keep_all = T)%>%
+  dplyr::mutate(Homes= ifelse(!is.na(Join)&is.na(Leave), 1,
+                              ifelse(!is.na(Leave)&is.na(Join), -1,
+                                     0)),
+                Places= ifelse(!is.na(Join)&is.na(Leave), Places,
+                               ifelse(!is.na(Leave)&is.na(Join), Places*-1,
+                                      0)))%>%
+  dplyr::select(Local.authority, Homes, Places,Sector)%>%
+  dplyr::group_by(Local.authority, Sector)%>%
+  dplyr::summarise(Homes = sum(Homes),
+                   Places = sum(Places))%>%
+  dplyr::ungroup()%>%
+  tidyr::complete(Local.authority, Sector = c("Private", "Local Authority", "Voluntary"))%>%
+  dplyr::mutate(Homes=ifelse(is.na(Homes), 0, Homes),
+                Places=ifelse(is.na(Places), 0, Places))%>%
+  dplyr::left_join(., read.csv(curl("https://raw.githubusercontent.com/BenGoodair/childrens_social_care_data/main/Final_Data/outputs/enter_exit.csv"))%>%
+                     dplyr::select(Local.authority, IMD.2019...Extent, Average_house_price)%>%
+                     dplyr::distinct(.keep_all = T), by="Local.authority")%>%
+  dplyr::left_join(., read.csv(curl("https://raw.githubusercontent.com/BenGoodair/childrens_social_care_data/main/Final_Data/outputs/dashboard_data.csv"))%>%
+                     dplyr::filter(!LA_Name=="Dorset"&!LA_Code=="E10000009")%>%
+                     dplyr::filter(variable=="Net gain of children by responsible LA"&year==2023)%>%
+                     dplyr::rename(Local.authority = LA_Name),
+                   by="Local.authority")%>%
+  dplyr::mutate(Sector = ifelse(Sector=="Private", "For-profit",
                                 ifelse(Sector=="Voluntary", "Third Sector", "Local Authority")))%>%
-  dplyr::filter(Average_house_price<1000000)%>%
-  ggplot(. ,aes(x=(as.numeric(Average_house_price)), y=net_places))+
+  dplyr::filter(!str_detect(Local.authority, "(?i)northampton"))%>%
+  ggplot(., aes(y=Places, x=as.numeric(Average_house_price)))+
   geom_smooth(method = "lm")+
   geom_point(color = "black", alpha = 0.5)+
   facet_wrap(~Sector)+
   geom_hline(yintercept = 0, linetype="dashed")+
   theme_bw()+
-  labs(x="Average House Price (£))", y="Net change to children's homes number\n(2016-2023)")+
-  coord_cartesian(ylim=c(-20, 40))
-
-ggsave(plot=plot, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/NF_report/Figures/children_homes_houseprice.jpeg", width=8, height=6, dpi=600)
-
-####children's homes by out-of-area placements####
-
-leaves <- exits %>%
-  dplyr::select(Local.authority, Places,leave_join, Sector)%>%
-  dplyr::filter(leave_join=="Leave")%>%
-  dplyr::mutate(yes = 1)%>%
-  dplyr::group_by(Local.authority, Sector )%>%
-  dplyr::summarise(homes = sum(yes),
-                   places = sum(as.numeric(Places), na.rm=T))%>%
-  dplyr::ungroup()
-
-leaves <- leaves %>%
-  dplyr::full_join(., tidyr:: expand_grid(leaves %>% 
-                                            dplyr::select(Local.authority)%>%
-                                            dplyr::distinct(), 
-                                          c("Local Authority", "Private", "Voluntary"))%>%
-                     dplyr::rename(Sector = `c("Local Authority", "Private", "Voluntary")`),
-                   by=c("Local.authority", "Sector"))
+  labs(x="Average House Price (£, 2023)", y="Net change to children's homes\n(2014-2023)")
 
 
-joins <- exits %>%
-  dplyr::select(Local.authority, Places,leave_join, Sector)%>%
-  dplyr::filter(leave_join=="Join")%>%
-  dplyr::mutate(yes = 1)%>%
-  dplyr::group_by(Local.authority, Sector )%>%
-  dplyr::summarise(homes_j = sum(yes),
-                   places_j = sum(as.numeric(Places), na.rm=T))%>%
-  dplyr::ungroup()
 
-joins <- joins %>%
-  dplyr::full_join(., tidyr:: expand_grid(joins %>% 
-                                            dplyr::select(Local.authority)%>%
-                                            dplyr::distinct(), 
-                                          c("Local Authority", "Private", "Voluntary"))%>%
-                     dplyr::rename(Sector = `c("Local Authority", "Private", "Voluntary")`),
-                   by=c("Local.authority", "Sector"))
 
-plot <- dplyr::full_join(leaves, joins, by=c("Local.authority", "Sector"))%>%
-  dplyr::mutate(homes_j = ifelse(is.na(homes_j), 0, homes_j),
-                places_j = ifelse(is.na(places_j), 0, homes_j),
-                homes = ifelse(is.na(homes), 0, homes),
-                places = ifelse(is.na(places), 0, places),
-                net = homes_j-homes,
-                Sector = ifelse(Sector=="Private", "For-profit",
-                                ifelse(Sector=="Voluntary", "Third Sector", "Local Authority")))%>%
-  dplyr::full_join(., la_df %>% 
-                     dplyr::filter(variable=="2. Other LA children externally placed within the local authority boundary",
-                                   year>2017)%>%
-                     dplyr::select(LA_Name,percent)%>%
-                     dplyr::group_by(LA_Name)%>%
-                     summarise(percent= mean(as.numeric(percent), na.rm=T))%>%
-                     dplyr::ungroup()%>%
-                     dplyr::rename(Local.authority = LA_Name), by="Local.authority")%>%
-  dplyr::filter(!is.na(Sector))%>%
-  ggplot(. ,aes(x=as.numeric(percent), y=net))+
-  geom_smooth(method = "lm")+
-  geom_point(color = "black", alpha = 0.5)+
-  facet_wrap(~Sector)+
-  geom_hline(yintercept = 0, linetype="dashed")+
-  theme_bw()+
-  labs(x="Average Children from other LAs placed inside (%))", y="Net change to children's homes number\n(2016-2023)")+
-  coord_cartesian(ylim = c(-30,30))
 
-ggsave(plot=plot, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Documents/GitHub/NF_report/Figures/children_homes_away.jpeg", width=8, height=6, dpi=600)
+
+ggsave(plot=plot, filename="Library/CloudStorage/OneDrive-Nexus365/Documents/GitHub/GitHub_new/NF_report/Figures/children_place_houseprice.jpeg", width=8, height=6, dpi=600)
+
 
