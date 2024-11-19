@@ -12,6 +12,25 @@ la_df <- read.csv(curl("https://raw.githubusercontent.com/BenGoodair/childrens_s
 ProviderData = read.csv(curl("https://raw.githubusercontent.com/BenGoodair/childrens_social_care_data/main/Final_Data/outputs/Provider_data.csv"))
 carehomes <- read.csv("Library/CloudStorage/OneDrive-Nexus365/Documents/Children's Care Homes Project/Data/Ben report dates.csv")
 
+#for natasha#
+not_carehomes_full <- read_csv("Library/CloudStorage/OneDrive-Nexus365/Documents/Children's Care Homes Project/Data/not_carehomes_full.csv")
+
+yes <- not_carehomes_full %>%
+  dplyr::filter(type == "Social Care Org")%>%
+  dplyr::filter(registrationStatus=="Registered")%>%
+  dplyr::filter()%>%
+  dplyr::distinct(providerId)
+
+carehomes_2 <- carehomes %>%
+  dplyr::filter(closed_complete=="Active")%>%
+  #dplyr::filter(ownership=="Local Authority")%>%
+  dplyr::distinct(locationid)
+
+
+summary(factor(carehomes$closed_complete))
+
+
+
 #updated exits, entries
 
 
@@ -521,6 +540,13 @@ ggsave(plot=dpplot, filename="C:/Users/benjamin.goodair/OneDrive - Nexus365/Docu
 
 
 ####outsourced adult residential activity#####
+
+plot1 <- df %>% dplyr::filter(SupportSetting=="Residential",
+                              ActivityProvision== "External")%>%
+  dplyr::select(percent_sector,year)%>%
+  dplyr::group_by(year)%>%
+  dplyr::summarise(percent_sector = mean(percent_sector, na.rm=T))%>%
+  dplyr::ungroup()
 
 plot1 <- df %>% dplyr::filter(SupportSetting=="Residential",
                               ActivityProvision== "External")%>%
@@ -1743,3 +1769,53 @@ plot <- exits %>%
 ggsave(plot=plot, filename="Library/CloudStorage/OneDrive-Nexus365/Documents/GitHub/GitHub_new/NF_report/Figures/children_place_houseprice.jpeg", width=8, height=6, dpi=600)
 
 
+####CQC ratings####
+
+
+fig2 <- read.csv("Library/CloudStorage/OneDrive-Nexus365/Documents/Children's Care Homes Project/Data/Ben Report Dates.csv")%>%
+  dplyr::select(inspectiondate, overall, ownership)%>%
+  dplyr::mutate(inspectiondate = as.Date(inspectiondate, format =  "%d%b%Y"))%>%
+  dplyr::mutate(good = ifelse(overall=="Good", 1,
+                              ifelse(overall=="Outstanding",1,
+                                     ifelse(overall=="Requires improvement", 0,
+                                            ifelse(overall=="Inadequate", 0,NA)))))%>%
+  dplyr::filter(!is.na(good),
+                !ownership=="")%>%
+  dplyr::arrange(inspectiondate) %>%
+  dplyr::mutate(all=1)%>%
+  dplyr::arrange(inspectiondate) %>%
+  dplyr::group_by(ownership, inspectiondate) %>%
+  dplyr::summarise(
+    good = sum(good),
+    all = sum(all)) %>%
+  dplyr::ungroup() %>%
+  complete(ownership, inspectiondate = seq.Date(min(.$inspectiondate), max(.$inspectiondate), by = "day")) %>%
+  dplyr::group_by(ownership) %>%
+  dplyr::arrange(inspectiondate) %>%
+  dplyr::mutate(rolling_good = zoo::rollapplyr(good, width = 365, FUN = sum, fill = NA, align = "right", na.rm=T)) %>%
+  dplyr::mutate(rolling_all = zoo::rollapplyr(all, width = 365, FUN = sum, fill = NA, align = "right", na.rm=T)) %>%
+  dplyr::mutate(rolling_good_ratio = rolling_good / rolling_all*100)%>%
+  ggplot(., aes(x=inspectiondate, y=rolling_good_ratio, colour=ownership))+
+  geom_line(size=2)+
+  labs(x="Year", y="Inspected Good or Outstanding (%)", color="Ownership")+
+  theme_bw()+
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y")+
+  theme(text = element_text(size=20),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        axis.ticks.length=unit(.28, "cm"),
+        axis.line.x = element_line(size = 0.5, linetype = "solid", colour = "black"),
+        axis.line.y = element_line(size = 0.5, linetype = "solid", colour = "black"),
+        axis.line = element_line(colour = "black"),
+        axis.title = element_text(size=24),
+        axis.text.x = element_text(size=18),
+        axis.text.y = element_text(size=20),
+        legend.title = element_blank(),
+        legend.box.background = element_rect(colour = "black", size = 1),
+        legend.text = element_text(size=20),
+        legend.position = "top",
+        strip.background = element_rect(fill="gray90", colour="black", size=1),
+        strip.text = element_text(face="bold", size=16),
+        title=element_text(face="bold")) +
+  theme(panel.spacing.x = unit(4, "mm"))+
+  scale_color_manual(values=c("#CD202C","#2A6EBB","#F0AB00" ))
